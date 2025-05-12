@@ -187,7 +187,7 @@ def adaptive_control_limits(values, false_alarm_target=0.01, min_percentile=0.95
     return np.percentile(values, 100 * mid_percentile)
 
 
-def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_dim=None, validation_split=0.2, model_filename='enhanced_transformer_autoencoder.pth'):
+def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_dim=None, validation_split=0.2, model_filename='results/models/enhanced_transformer_autoencoder.pth'):
     """训练增强版Transformer自编码器"""
     # 设置设备
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -294,7 +294,7 @@ def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
     plt.title('Enhanced Transformer Autoencoder Training Process')
     plt.legend()
     plt.grid(True)
-    plt.savefig('enhanced_transformer_loss.png')
+    plt.savefig('results/plots/enhanced_transformer_loss.png')
     plt.close()
     
     # 加载最佳模型

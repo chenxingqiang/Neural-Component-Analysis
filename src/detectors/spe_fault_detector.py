@@ -185,7 +185,7 @@ class SPEFaultDetector:
         self.is_trained = True
         return train_losses, val_losses
     
-    def save_model(self, filepath='spe_fault_detector.pth'):
+    def save_model(self, filepath='results/models/spe_fault_detector.pth'):
         """Save the trained model to a file"""
         if not self.is_trained:
             print("Warning: Model not trained yet. No model saved.")
@@ -203,7 +203,7 @@ class SPEFaultDetector:
         print(f"Model saved to {filepath}")
         return True
     
-    def load_model(self, filepath='spe_fault_detector.pth'):
+    def load_model(self, filepath='results/models/spe_fault_detector.pth'):
         """Load a trained model from a file"""
         try:
             checkpoint = torch.load(filepath, map_location=self.device)
@@ -570,7 +570,7 @@ def demo():
     detector.train(train_data, epochs=50, batch_size=32)
     
     # Save model
-    detector.save_model('spe_detector_demo.pth')
+    detector.save_model('results/models/spe_detector_demo.pth')
     
     # Evaluate performance
     metrics = detector.evaluate_performance(test_data, fault_start)
@@ -582,7 +582,7 @@ def demo():
     print(f"Detection Time: {metrics['detection_time'] if metrics['detection_time'] is not None else 'Not detected'}")
     
     # Plot results
-    detector.plot_results(test_data, fault_start, save_path='spe_detector_demo.png')
+    detector.plot_results(test_data, fault_start, save_path='results/plots/spe_detector_demo.png')
     
     return detector, metrics
 

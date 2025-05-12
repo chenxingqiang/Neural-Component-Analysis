@@ -321,7 +321,7 @@ def transformer_enhanced_two_stage_detector(X_train, X_test, happen, top_feature
     
     # Load pretrained model if available
     try:
-        model_t2.load_state_dict(torch.load('transformer_refiner_t2.pth', map_location=device))
+        model_t2.load_state_dict(torch.load('results/models/transformer_refiner_t2.pth', map_location=device))
         print("Loaded pretrained T² transformer model")
         trained_t2 = True
     except:
@@ -376,10 +376,10 @@ def transformer_enhanced_two_stage_detector(X_train, X_test, happen, top_feature
             # Save best model
             if avg_loss < best_loss_t2:
                 best_loss_t2 = avg_loss
-                torch.save(model_t2.state_dict(), 'transformer_refiner_t2.pth')
+                torch.save(model_t2.state_dict(), 'results/models/transformer_refiner_t2.pth')
         
         # Load best model
-        model_t2.load_state_dict(torch.load('transformer_refiner_t2.pth', map_location=device))
+        model_t2.load_state_dict(torch.load('results/models/transformer_refiner_t2.pth', map_location=device))
     
     # Train SPE model
     optimizer_spe = torch.optim.Adam(model_spe.parameters(), lr=0.001, weight_decay=1e-4)
@@ -392,7 +392,7 @@ def transformer_enhanced_two_stage_detector(X_train, X_test, happen, top_feature
     
     # Load pretrained model if available
     try:
-        model_spe.load_state_dict(torch.load('transformer_refiner_spe.pth', map_location=device))
+        model_spe.load_state_dict(torch.load('results/models/transformer_refiner_spe.pth', map_location=device))
         print("Loaded pretrained SPE transformer model")
         trained_spe = True
     except:
@@ -447,10 +447,10 @@ def transformer_enhanced_two_stage_detector(X_train, X_test, happen, top_feature
             # Save best model
             if avg_loss < best_loss_spe:
                 best_loss_spe = avg_loss
-                torch.save(model_spe.state_dict(), 'transformer_refiner_spe.pth')
+                torch.save(model_spe.state_dict(), 'results/models/transformer_refiner_spe.pth')
         
         # Load best model
-        model_spe.load_state_dict(torch.load('transformer_refiner_spe.pth', map_location=device))
+        model_spe.load_state_dict(torch.load('results/models/transformer_refiner_spe.pth', map_location=device))
     
     # Step 3: Apply models to all samples for final detection
     model_t2.eval()
@@ -551,7 +551,7 @@ def transformer_enhanced_two_stage_detector(X_train, X_test, happen, top_feature
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('transformer_enhanced_two_stage.png')
+    plt.savefig('results/plots/transformer_enhanced_two_stage.png')
     plt.close()
     
     # Print results

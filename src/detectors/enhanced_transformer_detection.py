@@ -298,7 +298,7 @@ def contribution_plot(model, faulty_sample, normal_data, device, n_top=10):
     plt.xlabel('Variable')
     plt.ylabel('Contribution')
     plt.tight_layout()
-    plt.savefig('fault_contribution_plot.png')
+    plt.savefig('results/plots/fault_contribution_plot.png')
     plt.close()
     
     return top_indices, top_contributions
@@ -325,7 +325,7 @@ def main():
     
     # Try to load pretrained model, train new model if not found
     try:
-        model.load_state_dict(torch.load('enhanced_transformer_autoencoder.pth', map_location=device))
+        model.load_state_dict(torch.load('results/models/enhanced_transformer_autoencoder.pth', map_location=device))
         print("Loaded pretrained enhanced Transformer model")
     except:
         print("Pretrained model not found. Training new model...")

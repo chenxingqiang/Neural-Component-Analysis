@@ -4,7 +4,7 @@ import os
 import time
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from run_secom_fault_detection import load_secom_data
+from scripts.run_secom_fault_detection import load_secom_data
 
 def calculate_pca_metrics(data, pca_model, projected_train, latent_dim):
     """Calculate T2 and SPE metrics using PCA model"""
@@ -84,7 +84,7 @@ def plot_pca_comparison(t2_pca, spe_pca, t2_limit_pca, spe_limit_pca, happen):
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('secom_pca_comparison.png')
+    plt.savefig('results/plots/secom_pca_comparison.png')
     print("Plot saved as secom_pca_comparison.png")
     plt.close()
 

@@ -5,13 +5,13 @@ import os
 from sklearn.preprocessing import StandardScaler
 import time
 import sys
-from enhanced_transformer_autoencoder import (
+from src.models.enhanced_transformer_autoencoder import (
     EnhancedTransformerAutoencoder, 
     calculate_weighted_spe,
     adaptive_control_limits,
     train_enhanced_model
 )
-from enhanced_transformer_detection import (
+from src.detectors.enhanced_transformer_detection import (
     simple_kde, 
     calculate_variable_importance,
     calculate_t2_statistics, 
@@ -21,7 +21,7 @@ from enhanced_transformer_detection import (
     plot_enhanced_metrics,
     contribution_plot
 )
-from improved_transformer_t2 import (
+from src.models.improved_transformer_t2 import (
     ImprovedTransformerAutoencoder,
     calculate_improved_t2,
     train_improved_model,
@@ -174,7 +174,7 @@ def combined_fault_detection(t2_values, spe_values, happen, t2_weight=0.4, spe_w
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('secom_combined_detection.png')
+    plt.savefig('results/plots/secom_combined_detection.png')
     plt.close()
     
     return {
@@ -273,7 +273,7 @@ def load_secom_data(data_dir='data/secom'):
         return None, None, None, None, None, None
 
 
-def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='secom_enhanced_transformer.pth'):
+def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='results/models/secom_enhanced_transformer.pth'):
     """
     Run enhanced transformer-based fault detection on SECOM data
     """
@@ -332,7 +332,7 @@ def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='seco
         plt.ylabel('Loss')
         plt.legend()
         plt.grid(True, alpha=0.3)
-        plt.savefig('secom_enhanced_transformer_training.png')
+        plt.savefig('results/plots/secom_enhanced_transformer_training.png')
         plt.close()
     
     model.to(device)
@@ -409,7 +409,7 @@ def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='seco
     }
 
 
-def run_improved_transformer_detection(X_train, X_test, happen, model_path='secom_improved_transformer.pth'):
+def run_improved_transformer_detection(X_train, X_test, happen, model_path='results/models/secom_improved_transformer.pth'):
     """
     Run improved transformer-based fault detection (SPE only approach) on SECOM data
     """
@@ -499,7 +499,7 @@ def run_improved_transformer_detection(X_train, X_test, happen, model_path='seco
     plt.ylabel('SPE')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig('secom_improved_transformer_spe.png')
+    plt.savefig('results/plots/secom_improved_transformer_spe.png')
     plt.close()
     
     runtime = time.time() - start_time
@@ -627,7 +627,7 @@ def analyze_feature_importance(model, X_train, X_test, happen, device, n_top=20)
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('secom_feature_importance.png')
+    plt.savefig('results/plots/secom_feature_importance.png')
     plt.close()
     
     # Detailed analysis of top features
@@ -976,7 +976,7 @@ def ultra_sensitive_ensemble_detector(X_train, X_test, happen, importance_result
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('secom_ultra_sensitive_ensemble.png')
+    plt.savefig('results/plots/secom_ultra_sensitive_ensemble.png')
     plt.close()
     
     print(f"\nUltra-Sensitive Ensemble Results:")
@@ -1137,7 +1137,7 @@ def extreme_anomaly_detector(X_train, X_test, happen, top_features):
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('secom_extreme_anomaly_detector.png')
+    plt.savefig('results/plots/secom_extreme_anomaly_detector.png')
     plt.close()
     
     print(f"\nExtreme Anomaly Detector Results:")
@@ -1390,7 +1390,7 @@ def ultra_extreme_anomaly_detector(X_train, X_test, happen, top_features):
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('secom_ultra_extreme_detection.png')
+    plt.savefig('results/plots/secom_ultra_extreme_detection.png')
     plt.close()
     
     print(f"\nUltra-Extreme Anomaly Detector Results:")
@@ -1786,7 +1786,7 @@ def balanced_two_stage_detector(X_train, X_test, happen, top_features):
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('secom_balanced_two_stage_detection.png')
+    plt.savefig('results/plots/secom_balanced_two_stage_detection.png')
     plt.close()
     
     # Summary information

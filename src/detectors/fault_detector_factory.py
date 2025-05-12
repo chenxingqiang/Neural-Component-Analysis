@@ -232,13 +232,13 @@ def detector_factory_demo():
     # Train or load the detector
     try:
         print("Trying to load pre-trained model...")
-        success = detector.load('factory_spe_detector.pth')
+        success = detector.load('results/models/factory_spe_detector.pth')
         if not success:
             raise FileNotFoundError("Model not found")
     except:
         print("Training new model...")
         detector.train(X_train, epochs=50)
-        detector.save('factory_spe_detector.pth')
+        detector.save('results/models/factory_spe_detector.pth')
     
     # Evaluate performance
     metrics = detector.evaluate(X_test, happen)

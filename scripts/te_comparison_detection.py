@@ -7,18 +7,18 @@ from scipy import stats
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import time
-from enhanced_transformer_autoencoder import (
+from src.models.enhanced_transformer_autoencoder import (
     EnhancedTransformerAutoencoder, 
     calculate_weighted_spe,
     adaptive_control_limits,
     train_enhanced_model
 )
-from enhanced_transformer_detection import (
+from src.detectors.enhanced_transformer_detection import (
     simple_kde, load_data, calculate_variable_importance,
     calculate_t2_statistics, calculate_control_limits,
     calculate_alarm_rates, calculate_detection_time
 )
-from improved_transformer_t2 import (
+from src.models.improved_transformer_t2 import (
     ImprovedTransformerAutoencoder,
     calculate_improved_t2,
     train_improved_model,
@@ -136,7 +136,7 @@ def plot_comparison(t2_pca, spe_pca, t2_transformer, spe_transformer,
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('te_comparison_fault_detection.png')
+    plt.savefig('results/plots/te_comparison_fault_detection.png')
     print("Plot saved as te_comparison_fault_detection.png")
     plt.close()
 
@@ -253,7 +253,7 @@ def main():
     
     # Try to load pre-trained model or train a new one
     try:
-        enhanced_model.load_state_dict(torch.load('enhanced_transformer_autoencoder.pth', map_location=device))
+        enhanced_model.load_state_dict(torch.load('results/models/enhanced_transformer_autoencoder.pth', map_location=device))
         print("Loaded pre-trained enhanced transformer model")
     except:
         print("Pre-trained enhanced model not found. Training a new model...")
@@ -266,7 +266,7 @@ def main():
             validation_split=0.2
         )
         
-        torch.save(enhanced_model.state_dict(), 'enhanced_transformer_autoencoder.pth')
+        torch.save(enhanced_model.state_dict(), 'results/models/enhanced_transformer_autoencoder.pth')
         print("Enhanced model trained and saved.")
     
     enhanced_model.to(device)
@@ -279,7 +279,7 @@ def main():
     
     # Try to load pre-trained model or train a new one
     try:
-        improved_model.load_state_dict(torch.load('improved_transformer_t2.pth', map_location=device))
+        improved_model.load_state_dict(torch.load('results/models/improved_transformer_t2.pth', map_location=device))
         print("Loaded pre-trained improved transformer model")
     except Exception as e:
         print(f"Pre-trained improved model not found or incompatible: {str(e)}")
@@ -293,7 +293,7 @@ def main():
             validation_split=0.2
         )
         
-        torch.save(improved_model.state_dict(), 'improved_transformer_t2_new.pth')
+        torch.save(improved_model.state_dict(), 'results/models/improved_transformer_t2_new.pth')
         print("Improved model trained and saved as improved_transformer_t2_new.pth")
     
     improved_model.to(device)

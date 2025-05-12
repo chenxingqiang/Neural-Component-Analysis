@@ -49,7 +49,7 @@ import os
 import time
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from run_secom_fault_detection import (
+from scripts.run_secom_fault_detection import (
     load_secom_data,
     run_enhanced_transformer_detection,
     run_improved_transformer_detection,
@@ -61,7 +61,7 @@ from run_secom_fault_detection import (
     analyze_feature_importance
 )
 # Import the Transformer-enhanced detector
-from transformer_enhanced_two_stage import transformer_enhanced_two_stage_detector
+from src.models.transformer_enhanced_two_stage import transformer_enhanced_two_stage_detector
 from scipy import stats
 
 
@@ -151,7 +151,7 @@ def plot_comparison(detection_results, happen, title_prefix="SECOM Detection Met
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('secom_comparison_fault_detection.png')
+    plt.savefig('results/plots/secom_comparison_fault_detection.png')
     print("Plot saved as secom_comparison_fault_detection.png")
     plt.close()
 

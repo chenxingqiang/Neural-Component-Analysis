@@ -46,6 +46,10 @@ neural-component-analysis/
 │   └── te_comparison_detection.py                # TE数据集检测方法比较
 ├── examples/                    # 示例代码
 │   └── integration_example.py                    # 集成使用示例
+├── results/                     # 结果输出目录
+│   ├── models/                  # 训练好的模型文件
+│   ├── plots/                   # 生成的图表
+│   └── logs/                    # 日志文件
 ├── tests/                       # 测试目录
 ├── LICENSE                      # MIT许可证
 ├── README.md                    # 本文档
@@ -110,6 +114,11 @@ pip install -r requirements.txt
 python scripts/run_secom_fault_detection.py
 ```
 
+所有结果将保存在`results/`目录下：
+- 模型文件将保存在`results/models/`
+- 图表将保存在`results/plots/`
+- 日志文件将保存在`results/logs/`
+
 ### 2. 比较不同模型在SECOM数据上的性能：
 
 ```bash
@@ -145,7 +154,7 @@ results = detector.detect(X_test_processed)
 
 ## 实验结果
 
-![故障检测比较](comparison_fault_detection.png)
+![故障检测比较](results/plots/comparison_fault_detection.png)
 
 SECOM数据集上各方法检测性能：
 
@@ -153,7 +162,7 @@ SECOM数据集上各方法检测性能：
 - 改进型T²检测器：AUC 0.92
 - 两阶段检测器：AUC 0.97
 
-更多结果见实验图像文件。
+更多结果见`results/plots/`目录下的图像文件。
 
 ## 引用
 
