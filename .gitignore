@@ -1,0 +1,125 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Distribution / packaging
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~.nib
+
+# PyTorch
+*.pth
+*.pt
+*.pkl
+*.h5
+model_weights/
+
+# Matplotlib
+*.png
+!comparison_fault_detection.png
+!comparison_fault_detection_preview.png
+!fault_contribution_plot.png
+!enhanced_transformer_loss.png
+!improved_transformer_combined_metrics.png
+!improved_transformer_t2_metrics.png
+!secom_balanced_two_stage_detection.png
+!secom_combined_detection.png
+!secom_comparison_detection.png
+!secom_comparison_fault_detection.png
+!secom_enhanced_transformer_fault_detection.png
+!secom_enhanced_transformer_training.png
+!secom_extreme_anomaly_detector.png
+!secom_feature_importance.png
+!secom_improved_transformer_spe.png
+!secom_methods_comparison.png
+!secom_pca_comparison.png
+!secom_selected_50_features_spe.png
+!secom_selected_50_features_training.png
+!secom_ultra_extreme_detection.png
+!secom_ultra_sensitive_ensemble.png
+!spe_detector_demo.png
+!t2_spe_comparison.png
+!transformer_enhanced_two_stage.png
+!data/secom/feature_distribution.png
+!data/secom/time_series.png
+
+# Data files
+# Uncomment if you don't want to include data
+# data/
+
+# Logs
+logs/
+*.log 

@@ -60,7 +60,7 @@ def simple_kde(data, n_points=1000):
 
 def load_data(is_mock=False):
     """Load data, create mock data if real data unavailable"""
-    if is_mock or not os.path.exists('./data/train/d00.dat'):
+    if is_mock or not os.path.exists('./data/TE/train/d00.dat'):
         print("Using mock data for demonstration")
         np.random.seed(42)
         # Create mock normal operation data
@@ -74,8 +74,8 @@ def load_data(is_mock=False):
     else:
         try:
             # Load actual data
-            d00 = np.loadtxt('./data/train/d00.dat')
-            d01_te = np.loadtxt('./data/test/d01_te.dat')
+            d00 = np.loadtxt('./data/TE/train/d00.dat')
+            d01_te = np.loadtxt('./data/TE/test/d01_te.dat')
             happen = 160  # Same as MATLAB code
         except:
             print("Error loading data, using mock data instead")
