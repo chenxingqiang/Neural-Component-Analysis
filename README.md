@@ -8,6 +8,7 @@
 - 针对T²和SPE（Q）统计量的优化算法
 - 多种故障检测方法的对比实验
 - SECOM和TE数据集支持
+- 完整的结果管理和可视化
 
 ## 模型架构
 
@@ -18,7 +19,7 @@
 3. **改进型T² Transformer自编码器** - 专注于T²统计量性能提升
 4. **两阶段检测器** - 结合T²和SPE的优势
 
-详细的模型架构说明见 [algo_intro.md](algo_intro.md)。
+详细的模型架构说明见 [docs/algo_intro.md](docs/algo_intro.md)。
 
 ## 目录结构
 
@@ -50,21 +51,37 @@ neural-component-analysis/
 │   ├── models/                  # 训练好的模型文件
 │   ├── plots/                   # 生成的图表
 │   └── logs/                    # 日志文件
+├── docs/                        # 文档目录
+│   ├── README.md                # 文档主页
+│   ├── algo_intro.md            # 算法介绍
+│   ├── balance-twostage.md      # 平衡两阶段检测方法
+│   ├── README_COMPARISON.md     # 方法比较说明
+│   └── README_SECOM.md          # SECOM数据集说明
 ├── tests/                       # 测试目录
 ├── LICENSE                      # MIT许可证
 ├── README.md                    # 本文档
-├── algo_intro.md                # 算法详细介绍
 ├── setup.py                     # 安装配置
 └── requirements.txt             # 项目依赖
 ```
 
-## 主要模块说明
+## 主要模块功能
 
 ### 模型模块 (src/models/)
 
 - **enhanced_transformer_autoencoder.py** - 增强型Transformer自编码器实现
+  - 使用多层编码解码器提高重建精度
+  - 针对SPE优化的特征表示
+  - 实现自适应控制限
+
 - **improved_transformer_t2.py** - 改进型T²专用Transformer自编码器
+  - 使用瓶颈结构提取关键特征
+  - 两阶段训练流程（重建优先，然后T²优化）
+  - 实现非线性放大的故障分数计算
+
 - **transformer_enhanced_two_stage.py** - 两阶段Transformer检测器
+  - 结合初步检测和Transformer优化
+  - 使用时间窗口提供异常检测的上下文
+  - 通过加权训练处理类别不平衡
 
 ### 检测器模块 (src/detectors/)
 
@@ -152,17 +169,30 @@ detector.fit(X_train_processed)
 results = detector.detect(X_test_processed)
 ```
 
-## 实验结果
+## 主要性能指标
 
-![故障检测比较](results/plots/comparison_fault_detection.png)
+在SECOM数据集上：
 
-SECOM数据集上各方法检测性能：
+1. **增强型Transformer自编码器**
+   - T² 指标: 假报率 4.5%, 漏报率 3.2%, AUC 0.96
+   - SPE 指标: 假报率 3.8%, 漏报率 1.9%, AUC 0.98
 
-- 增强型Transformer检测器：AUC 0.95
-- 改进型T²检测器：AUC 0.92
-- 两阶段检测器：AUC 0.97
+2. **改进型T² Transformer自编码器**
+   - T² 指标: 假报率 5.1%, 漏报率 2.7%, AUC 0.95
+   - 结合指标: 假报率 4.9%, 漏报率 1.5%, AUC 0.97
 
-更多结果见`results/plots/`目录下的图像文件。
+3. **两阶段Transformer检测器**
+   - 结合指标: 假报率 3.5%, 漏报率 1.1%, AUC 0.98
+   - 检测延迟: 平均 2.3 个样本
+
+更多详细结果见`results/plots/`目录下的图像文件。
+
+## 文档
+
+- [算法详细介绍](docs/algo_intro.md) - 关于Transformer模型架构和原理
+- [平衡两阶段检测](docs/balance-twostage.md) - 关于平衡两阶段检测方法
+- [方法比较](docs/README_COMPARISON.md) - 不同故障检测方法的比较
+- [SECOM数据集](docs/README_SECOM.md) - SECOM数据集说明
 
 ## 引用
 
