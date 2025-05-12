@@ -187,8 +187,37 @@ def adaptive_control_limits(values, false_alarm_target=0.01, min_percentile=0.95
     return np.percentile(values, 100 * mid_percentile)
 
 
-def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_dim=None, validation_split=0.2, model_filename='results/models/enhanced_transformer_autoencoder.pth'):
-    """训练增强版Transformer自编码器"""
+def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_dim=None, validation_split=0.2, model_filename='results/models/enhanced_transformer_autoencoder.pth', dataset_prefix=None):
+    """
+    Train enhanced transformer autoencoder
+    
+    Parameters:
+    -----------
+    X_train : numpy.ndarray
+        Training data
+    epochs : int
+        Number of training epochs
+    batch_size : int
+        Training batch size
+    lr : float
+        Learning rate
+    hidden_dim : int
+        Hidden dimension size, if None will be determined automatically
+    validation_split : float
+        Fraction of data to use for validation
+    model_filename : str
+        Path to save model
+    dataset_prefix : str
+        Optional dataset prefix to add to the filename
+    """
+    # If dataset prefix is provided, add it to the filename
+    if dataset_prefix:
+        # Extract just the filename without path
+        base_filename = os.path.basename(model_filename)
+        # Add dataset prefix to the filename
+        new_filename = f"results/models/{dataset_prefix}_{base_filename}"
+        model_filename = new_filename
+
     # 设置设备
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     

@@ -844,8 +844,8 @@ def ultra_sensitive_ensemble_detector(X_train, X_test, happen, importance_result
             dropout=0.1  # Lower dropout for small feature sets
         )
         
-        # Use unique model filename for each ensemble member
-        model_filename = f'ensemble_model_{i+1}_features_{len(feature_set)}.pth'
+        # Use unique model filename for each ensemble member with dataset prefix
+        model_filename = f'results/models/secom_ensemble_model_{i+1}_features_{len(feature_set)}.pth'
         
         # Train model with early stopping
         model, _, _ = train_enhanced_model(
