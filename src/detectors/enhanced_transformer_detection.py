@@ -5,12 +5,136 @@ import os
 from scipy import stats
 from sklearn.preprocessing import StandardScaler
 import time
-from enhanced_transformer_autoencoder import (
+from src.models.enhanced_transformer_autoencoder import (
     EnhancedTransformerAutoencoder, 
     calculate_weighted_spe,
     adaptive_control_limits,
     train_enhanced_model
 )
+
+
+class EnhancedTransformerModel:
+    """Enhanced Transformer model wrapper for fault detection"""
+    
+    def __init__(self, input_dim, hidden_dim=None, nhead=4, num_layers=2, dropout=0.1):
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim if hidden_dim else min(32, input_dim)
+        self.nhead = nhead
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
+        # Create the model
+        self.model = EnhancedTransformerAutoencoder(
+            input_dim=input_dim,
+            hidden_dim=self.hidden_dim,
+            nhead=nhead,
+            num_layers=num_layers,
+            dropout=dropout
+        ).to(self.device)
+        
+        self.t2_sigma_inv = None
+        
+    def train_model(self, train_data, epochs=100, batch_size=32):
+        """Train the model using the enhanced training method"""
+        return train_enhanced_model(
+            model=self.model,
+            train_data=train_data,
+            epochs=epochs,
+            batch_size=batch_size,
+            device=self.device
+        )
+    
+    def calculate_statistics(self, test_data):
+        """Calculate T² and SPE statistics for test data"""
+        # Calculate T² statistics
+        t2_values, self.t2_sigma_inv = calculate_t2_statistics(
+            model=self.model,
+            data=test_data,
+            device=self.device,
+            Sigma_inv=self.t2_sigma_inv
+        )
+        
+        # Calculate SPE statistics
+        importance_weights = calculate_variable_importance(
+            model=self.model, 
+            X_train=test_data[:min(100, len(test_data))],
+            device=self.device
+        )
+        
+        spe_values = calculate_weighted_spe(
+            model=self.model,
+            data=test_data,
+            weights=importance_weights,
+            device=self.device
+        )
+        
+        return t2_values, spe_values
+    
+    def calculate_control_limits(self, train_data, confidence=0.99):
+        """Calculate control limits for T² and SPE"""
+        # Calculate statistics on training data
+        t2_train, spe_train = self.calculate_statistics(train_data)
+        
+        # Calculate control limits
+        t2_limit = calculate_control_limits(t2_train, confidence=confidence)
+        spe_limit = calculate_control_limits(spe_train, confidence=confidence)
+        
+        return t2_limit, spe_limit
+    
+    def save_model(self, filepath):
+        """Save the model to a file"""
+        try:
+            torch.save({
+                'model_state_dict': self.model.state_dict(),
+                'input_dim': self.input_dim,
+                'hidden_dim': self.hidden_dim,
+                'nhead': self.nhead,
+                'num_layers': self.num_layers,
+                'dropout': self.dropout,
+                't2_sigma_inv': self.t2_sigma_inv
+            }, filepath)
+            return True
+        except Exception as e:
+            print(f"Error saving model: {e}")
+            return False
+    
+    def load_model(self, filepath):
+        """Load the model from a file"""
+        try:
+            checkpoint = torch.load(filepath, map_location=self.device)
+            
+            # Load model parameters if they exist in the checkpoint
+            self.input_dim = checkpoint.get('input_dim', self.input_dim)
+            self.hidden_dim = checkpoint.get('hidden_dim', self.hidden_dim)
+            self.nhead = checkpoint.get('nhead', self.nhead)
+            self.num_layers = checkpoint.get('num_layers', self.num_layers)
+            self.dropout = checkpoint.get('dropout', self.dropout)
+            
+            # Recreate model if parameters don't match
+            if (self.model.input_dim != self.input_dim or 
+                self.model.hidden_dim != self.hidden_dim or
+                self.model.transformer_encoder.layers[0].self_attn.num_heads != self.nhead or
+                len(self.model.transformer_encoder.layers) != self.num_layers):
+                
+                self.model = EnhancedTransformerAutoencoder(
+                    input_dim=self.input_dim,
+                    hidden_dim=self.hidden_dim,
+                    nhead=self.nhead,
+                    num_layers=self.num_layers,
+                    dropout=self.dropout
+                ).to(self.device)
+            
+            # Load model state
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            
+            # Load T² statistics
+            self.t2_sigma_inv = checkpoint.get('t2_sigma_inv', None)
+            
+            return True
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            return False
 
 
 def simple_kde(data, n_points=1000):
