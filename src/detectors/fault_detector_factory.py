@@ -6,8 +6,8 @@ fault detection methods, allowing easy switching between detection approaches.
 """
 
 import numpy as np
-from spe_fault_detector import SPEFaultDetector
-from enhanced_transformer_detection import EnhancedTransformerModel
+from .spe_fault_detector import SPEFaultDetector
+from .enhanced_transformer_detection import EnhancedTransformerModel
 
 class FaultDetector:
     """Base interface for all fault detection methods"""
@@ -213,7 +213,7 @@ class FaultDetectorFactory:
 # Example usage
 def detector_factory_demo():
     """Demonstrate use of the FaultDetectorFactory"""
-    from enhanced_transformer_detection import load_data
+    from .enhanced_transformer_detection import load_data
     
     # Load data
     X_train, X_test, happen = load_data(is_mock=True)
