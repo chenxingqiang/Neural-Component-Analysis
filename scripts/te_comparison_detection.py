@@ -200,8 +200,15 @@ def print_comparison_table(pca_false_rates, pca_miss_rates,
     print("="*90)
 
 
-def main():
-    """Main function to run the comparison between PCA and transformer-based fault detection methods"""
+def main(skip_improved_transformer=False):
+    """
+    Main function to run the comparison between PCA and transformer-based fault detection methods
+    
+    Parameters:
+    -----------
+    skip_improved_transformer : bool
+        If True, skip the improved transformer model (faster execution)
+    """
     start_time = time.time()
     
     # Load data
@@ -266,38 +273,121 @@ def main():
             validation_split=0.2
         )
         
-        torch.save(model.state_dict(), "results/models/enhanced_transformer_autoencoder.pth")
+        torch.save(enhanced_model.state_dict(), "results/models/enhanced_transformer_autoencoder.pth")
         print("Enhanced model trained and saved.")
     
     enhanced_model.to(device)
     
-    # 2. Initialize and load the improved transformer model
-    print("\nSetting up improved transformer model...")
-    # Ensure hidden_dim is divisible by 4 (number of heads)
-    improved_hidden_dim = (hidden_dim // 4) * 4
-    improved_model = ImprovedTransformerAutoencoder(input_dim, improved_hidden_dim)
+    # Initialize improved transformer model variables with default values
+    t2_train_improved = np.zeros_like(t2_train_pca)
+    t2_test_improved = np.zeros_like(t2_test_pca)
+    spe_train_improved = np.zeros_like(spe_train_pca)
+    spe_test_improved = np.zeros_like(spe_test_pca)
+    t2_limit_improved = 0
+    spe_limit_improved = 0
+    improved_false_rates = [0, 0]
+    improved_miss_rates = [0, 0]
+    improved_detection_times = [None, None]
     
-    # Try to load pre-trained model or train a new one
-    try:
-        improved_model.load_state_dict(torch.load('results/models/improved_transformer_t2.pth', map_location=device))
-        print("Loaded pre-trained improved transformer model")
-    except Exception as e:
-        print(f"Pre-trained improved model not found or incompatible: {str(e)}")
-        print("Training a new improved transformer model...")
-        improved_model, _, _ = train_improved_model(
-            X_train, 
-            epochs=50,
-            batch_size=32,
-            lr=0.001,
-            hidden_dim=improved_hidden_dim,
-            validation_split=0.2
-        )
+    # 2. Initialize and load the improved transformer model (if not skipped)
+    if not skip_improved_transformer:
+        print("\nSetting up improved transformer model...")
+        # Ensure hidden_dim is divisible by 4 (number of heads)
+        improved_hidden_dim = (hidden_dim // 4) * 4
+        improved_model = ImprovedTransformerAutoencoder(input_dim, improved_hidden_dim)
         
-        torch.save(improved_model.state_dict(), "results/models/improved_transformer_t2_new.pth")
-        print("Improved model trained and saved as improved_transformer_t2_new.pth")
-    
-    improved_model.to(device)
-    
+        # Try to load pre-trained model or train a new one
+        try:
+            improved_model.load_state_dict(torch.load('results/models/improved_transformer_t2.pth', map_location=device))
+            print("Loaded pre-trained improved transformer model")
+        except Exception as e:
+            print(f"Pre-trained improved model not found or incompatible: {str(e)}")
+            print("Training a new improved transformer model...")
+            improved_model, _, _ = train_improved_model(
+                X_train, 
+                epochs=50,
+                batch_size=32,
+                lr=0.001,
+                hidden_dim=improved_hidden_dim,
+                validation_split=0.2
+            )
+            
+            torch.save(improved_model.state_dict(), "results/models/improved_transformer_t2_new.pth")
+            print("Improved model trained and saved as improved_transformer_t2_new.pth")
+        
+        improved_model.to(device)
+        
+        # Calculate metrics for improved transformer model
+        print("\nCalculating improved transformer metrics...")
+        # Calculate T² and SPE separately for the improved model
+        
+        # Calculate T² statistics using a T²-specific function
+        # The function returns additional values (cov_matrix and mean_vector) we don't need
+        t2_train_improved, _, _ = calculate_improved_t2(improved_model, X_train, device)
+        t2_test_improved, _, _ = calculate_improved_t2(improved_model, X_test, device)
+        
+        # Calculate SPE statistics using the SPE-specific function
+        spe_train_improved = calculate_improved_spe(improved_model, X_train, device)
+        spe_test_improved = calculate_improved_spe(improved_model, X_test, device)
+        
+        # Debug T² statistics
+        print("\nT² Statistics Analysis:")
+        print(f"Training T² - Min: {np.min(t2_train_improved):.2f}, Max: {np.max(t2_train_improved):.2f}, Mean: {np.mean(t2_train_improved):.2f}, Median: {np.median(t2_train_improved):.2f}")
+        print(f"Test T² (Normal) - Min: {np.min(t2_test_improved[:happen]):.2f}, Max: {np.max(t2_test_improved[:happen]):.2f}, Mean: {np.mean(t2_test_improved[:happen]):.2f}, Median: {np.median(t2_test_improved[:happen]):.2f}")
+        print(f"Test T² (Fault) - Min: {np.min(t2_test_improved[happen:]):.2f}, Max: {np.max(t2_test_improved[happen:]):.2f}, Mean: {np.mean(t2_test_improved[happen:]):.2f}, Median: {np.median(t2_test_improved[happen:]):.2f}")
+        print(f"SPE Statistics Analysis:")
+        print(f"Training SPE - Min: {np.min(spe_train_improved):.2f}, Max: {np.max(spe_train_improved):.2f}, Mean: {np.mean(spe_train_improved):.2f}, Median: {np.median(spe_train_improved):.2f}")
+        print(f"Test SPE (Normal) - Min: {np.min(spe_test_improved[:happen]):.2f}, Max: {np.max(spe_test_improved[:happen]):.2f}, Mean: {np.mean(spe_test_improved[:happen]):.2f}, Median: {np.median(spe_test_improved[:happen]):.2f}")
+        print(f"Test SPE (Fault) - Min: {np.min(spe_test_improved[happen:]):.2f}, Max: {np.max(spe_test_improved[happen:]):.2f}, Mean: {np.mean(spe_test_improved[happen:]):.2f}, Median: {np.median(spe_test_improved[happen:]):.2f}")
+        
+        # Fix: Invert the T² metric for Improved Transformer since lower values indicate faults
+        print("\nInverting T² metric for Improved Transformer...")
+        # Find the maximum T² value
+        max_t2 = max(np.max(t2_train_improved), np.max(t2_test_improved))
+        # Calculate new T² values as (max_value - value), making smaller values larger and vice versa
+        normalized_t2_scale = 100  # Scale to make numbers easier to work with
+        t2_train_improved_inverted = normalized_t2_scale * (1.0 - t2_train_improved / max_t2)
+        t2_test_improved_inverted = normalized_t2_scale * (1.0 - t2_test_improved / max_t2)
+        
+        # Replace original T² values with inverted ones
+        t2_train_improved = t2_train_improved_inverted
+        t2_test_improved = t2_test_improved_inverted
+        
+        # Add adjustment factor based on SPE values to make T² more sensitive to faults
+        # Calculate correlation between SPE and faults to estimate a good weight factor
+        spe_normal_mean = np.mean(spe_test_improved[:happen])
+        spe_fault_mean = np.mean(spe_test_improved[happen:])
+        spe_diff_ratio = max(1.0, spe_fault_mean / spe_normal_mean)
+        print(f"SPE fault vs normal ratio: {spe_diff_ratio:.2f}")
+        
+        # Use SPE values to enhance T² sensitivity to faults
+        weight = 0.5  # Adjust this parameter to balance contribution
+        for i in range(happen, len(t2_test_improved)):
+            spe_ratio = spe_test_improved[i] / spe_normal_mean
+            t2_test_improved[i] += weight * normalized_t2_scale * (spe_ratio / spe_diff_ratio)
+        
+        # Recalculate statistics after inversion and enhancement
+        print("\nEnhanced T² Statistics Analysis:")
+        print(f"Training T² - Min: {np.min(t2_train_improved):.2f}, Max: {np.max(t2_train_improved):.2f}, Mean: {np.mean(t2_train_improved):.2f}, Median: {np.median(t2_train_improved):.2f}")
+        print(f"Test T² (Normal) - Min: {np.min(t2_test_improved[:happen]):.2f}, Max: {np.max(t2_test_improved[:happen]):.2f}, Mean: {np.mean(t2_test_improved[:happen]):.2f}, Median: {np.median(t2_test_improved[:happen]):.2f}")
+        print(f"Test T² (Fault) - Min: {np.min(t2_test_improved[happen:]):.2f}, Max: {np.max(t2_test_improved[happen:]):.2f}, Mean: {np.mean(t2_test_improved[happen:]):.2f}, Median: {np.median(t2_test_improved[happen:]):.2f}")
+        
+        # Calculate separate control limits for T² and SPE
+        t2_limit_improved = np.percentile(t2_train_improved, 99)  # Use simple percentile method for T² after inversion
+        spe_limit_improved = calculate_control_limit(spe_train_improved, confidence=0.99, is_t2=False)
+        
+        print(f"Improved Transformer control limits: T² = {t2_limit_improved:.2f}, SPE = {spe_limit_improved:.2f}")
+        
+        # Calculate improved model alarm rates
+        improved_false_rates, improved_miss_rates = calculate_alarm_rates(
+            t2_test_improved, spe_test_improved, t2_limit_improved, spe_limit_improved, happen)
+        
+        # Calculate improved model detection times
+        improved_detection_times = calculate_detection_time(
+            t2_test_improved, spe_test_improved, t2_limit_improved, spe_limit_improved, happen, consecutive_required=3)
+    else:
+        print("\nSkipping improved transformer model as requested.")
+        
     # Calculate metrics for enhanced transformer model
     print("\nCalculating enhanced transformer metrics...")
     # Calculate variable importance weights for weighted SPE
@@ -315,76 +405,12 @@ def main():
     spe_limit_enhanced = calculate_control_limits(spe_train_enhanced, method='adaptive', false_alarm_target=0.01)
     print(f"Enhanced Transformer control limits: T² = {t2_limit_enhanced:.2f}, SPE = {spe_limit_enhanced:.2f}")
     
-    # Calculate metrics for improved transformer model
-    print("\nCalculating improved transformer metrics...")
-    # Calculate T² and SPE separately for the improved model
-    
-    # Calculate T² statistics using a T²-specific function
-    # The function returns additional values (cov_matrix and mean_vector) we don't need
-    t2_train_improved, _, _ = calculate_improved_t2(improved_model, X_train, device)
-    t2_test_improved, _, _ = calculate_improved_t2(improved_model, X_test, device)
-    
-    # Calculate SPE statistics using the SPE-specific function
-    spe_train_improved = calculate_improved_spe(improved_model, X_train, device)
-    spe_test_improved = calculate_improved_spe(improved_model, X_test, device)
-    
-    # Debug T² statistics
-    print("\nT² Statistics Analysis:")
-    print(f"Training T² - Min: {np.min(t2_train_improved):.2f}, Max: {np.max(t2_train_improved):.2f}, Mean: {np.mean(t2_train_improved):.2f}, Median: {np.median(t2_train_improved):.2f}")
-    print(f"Test T² (Normal) - Min: {np.min(t2_test_improved[:happen]):.2f}, Max: {np.max(t2_test_improved[:happen]):.2f}, Mean: {np.mean(t2_test_improved[:happen]):.2f}, Median: {np.median(t2_test_improved[:happen]):.2f}")
-    print(f"Test T² (Fault) - Min: {np.min(t2_test_improved[happen:]):.2f}, Max: {np.max(t2_test_improved[happen:]):.2f}, Mean: {np.mean(t2_test_improved[happen:]):.2f}, Median: {np.median(t2_test_improved[happen:]):.2f}")
-    print(f"SPE Statistics Analysis:")
-    print(f"Training SPE - Min: {np.min(spe_train_improved):.2f}, Max: {np.max(spe_train_improved):.2f}, Mean: {np.mean(spe_train_improved):.2f}, Median: {np.median(spe_train_improved):.2f}")
-    print(f"Test SPE (Normal) - Min: {np.min(spe_test_improved[:happen]):.2f}, Max: {np.max(spe_test_improved[:happen]):.2f}, Mean: {np.mean(spe_test_improved[:happen]):.2f}, Median: {np.median(spe_test_improved[:happen]):.2f}")
-    print(f"Test SPE (Fault) - Min: {np.min(spe_test_improved[happen:]):.2f}, Max: {np.max(spe_test_improved[happen:]):.2f}, Mean: {np.mean(spe_test_improved[happen:]):.2f}, Median: {np.median(spe_test_improved[happen:]):.2f}")
-    
-    # Fix: Invert the T² metric for Improved Transformer since lower values indicate faults
-    print("\nInverting T² metric for Improved Transformer...")
-    # Find the maximum T² value
-    max_t2 = max(np.max(t2_train_improved), np.max(t2_test_improved))
-    # Calculate new T² values as (max_value - value), making smaller values larger and vice versa
-    normalized_t2_scale = 100  # Scale to make numbers easier to work with
-    t2_train_improved_inverted = normalized_t2_scale * (1.0 - t2_train_improved / max_t2)
-    t2_test_improved_inverted = normalized_t2_scale * (1.0 - t2_test_improved / max_t2)
-    
-    # Replace original T² values with inverted ones
-    t2_train_improved = t2_train_improved_inverted
-    t2_test_improved = t2_test_improved_inverted
-    
-    # Add adjustment factor based on SPE values to make T² more sensitive to faults
-    # Calculate correlation between SPE and faults to estimate a good weight factor
-    spe_normal_mean = np.mean(spe_test_improved[:happen])
-    spe_fault_mean = np.mean(spe_test_improved[happen:])
-    spe_diff_ratio = max(1.0, spe_fault_mean / spe_normal_mean)
-    print(f"SPE fault vs normal ratio: {spe_diff_ratio:.2f}")
-    
-    # Use SPE values to enhance T² sensitivity to faults
-    weight = 0.5  # Adjust this parameter to balance contribution
-    for i in range(happen, len(t2_test_improved)):
-        spe_ratio = spe_test_improved[i] / spe_normal_mean
-        t2_test_improved[i] += weight * normalized_t2_scale * (spe_ratio / spe_diff_ratio)
-    
-    # Recalculate statistics after inversion and enhancement
-    print("\nEnhanced T² Statistics Analysis:")
-    print(f"Training T² - Min: {np.min(t2_train_improved):.2f}, Max: {np.max(t2_train_improved):.2f}, Mean: {np.mean(t2_train_improved):.2f}, Median: {np.median(t2_train_improved):.2f}")
-    print(f"Test T² (Normal) - Min: {np.min(t2_test_improved[:happen]):.2f}, Max: {np.max(t2_test_improved[:happen]):.2f}, Mean: {np.mean(t2_test_improved[:happen]):.2f}, Median: {np.median(t2_test_improved[:happen]):.2f}")
-    print(f"Test T² (Fault) - Min: {np.min(t2_test_improved[happen:]):.2f}, Max: {np.max(t2_test_improved[happen:]):.2f}, Mean: {np.mean(t2_test_improved[happen:]):.2f}, Median: {np.median(t2_test_improved[happen:]):.2f}")
-    
-    # Calculate separate control limits for T² and SPE
-    t2_limit_improved = np.percentile(t2_train_improved, 99)  # Use simple percentile method for T² after inversion
-    spe_limit_improved = calculate_control_limit(spe_train_improved, confidence=0.99, is_t2=False)
-    
-    print(f"Improved Transformer control limits: T² = {t2_limit_improved:.2f}, SPE = {spe_limit_improved:.2f}")
-    
-    # Calculate alarm rates for all models
+    # Calculate alarm rates for main models
     pca_false_rates, pca_miss_rates = calculate_alarm_rates(
         t2_test_pca, spe_test_pca, t2_limit_pca, spe_limit_pca, happen)
     
     enhanced_false_rates, enhanced_miss_rates = calculate_alarm_rates(
         t2_test_enhanced, spe_test_enhanced, t2_limit_enhanced, spe_limit_enhanced, happen)
-    
-    improved_false_rates, improved_miss_rates = calculate_alarm_rates(
-        t2_test_improved, spe_test_improved, t2_limit_improved, spe_limit_improved, happen)
     
     # Calculate detection times with fewer consecutive samples required (3 instead of 5)
     pca_detection_times = calculate_detection_time(
@@ -392,9 +418,6 @@ def main():
     
     enhanced_detection_times = calculate_detection_time(
         t2_test_enhanced, spe_test_enhanced, t2_limit_enhanced, spe_limit_enhanced, happen, consecutive_required=3)
-    
-    improved_detection_times = calculate_detection_time(
-        t2_test_improved, spe_test_improved, t2_limit_improved, spe_limit_improved, happen, consecutive_required=3)
     
     # Print comparison table
     print_comparison_table(
@@ -419,10 +442,10 @@ def main():
     runtime = time.time() - start_time
     print(f"Total Runtime: {runtime:.2f} seconds")
     
-    return {
+    # Prepare the result dictionary
+    result = {
         'pca_model': pca_model,
         'enhanced_transformer_model': enhanced_model,
-        'improved_transformer_model': improved_model,
         'pca_metrics': {
             't2_train': t2_train_pca,
             'spe_train': spe_train_pca,
@@ -459,7 +482,22 @@ def main():
         },
         'runtime': runtime
     }
+    
+    # Add improved transformer model only if it was actually used
+    if not skip_improved_transformer:
+        result['improved_transformer_model'] = improved_model
+    
+    return result
 
 
 if __name__ == "__main__":
-    main() 
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Run TE fault detection methods comparison')
+    parser.add_argument('--skip_improved_transformer', action='store_true', 
+                        help='Skip Improved Transformer model (faster)')
+    
+    args = parser.parse_args()
+    
+    main(skip_improved_transformer=args.skip_improved_transformer)
