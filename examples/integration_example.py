@@ -60,7 +60,8 @@ def integrate_spe_detector():
         plt.title('SPE Detector Training Progress')
         plt.legend()
         plt.grid(True, alpha=0.3)
-        plt.savefig('results/plots/spe_detector_training_loss.png')
+        os.makedirs("results/plots", exist_ok=True)
+        plt.savefig("results/plots/spe_detector_training_loss.png")
         plt.close()
         print("Training loss plot saved to 'results/plots/spe_detector_training_loss.png'")
 
@@ -210,7 +211,7 @@ def real_time_monitoring_simulation():
     plt.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig('results/plots/real_time_monitoring.png')
+    plt.savefig("results/plots/real_time_monitoring.png")
     plt.close()
 
     print("\nReal-time monitoring simulation completed")

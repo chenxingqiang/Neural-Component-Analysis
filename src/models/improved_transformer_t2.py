@@ -519,7 +519,7 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
         model.load_state_dict(best_model)
     
     # Save model
-    torch.save(model.state_dict(), 'results/models/improved_transformer_t2.pth')
+    torch.save(model.state_dict(), "results/models/improved_transformer_t2.pth")
     print("Model trained and saved as improved_transformer_t2.pth")
     
     return model, train_losses, val_losses
@@ -673,10 +673,10 @@ def plot_metrics(t2_test, spe_test, t2_limit, spe_limit, happen, is_combined=Tru
     plt.tight_layout()
     
     if is_combined:
-        plt.savefig('results/plots/improved_transformer_combined_metrics.png')
+        plt.savefig("results/plots/improved_transformer_combined_metrics.png")
         print("Plot saved as improved_transformer_combined_metrics.png")
     else:
-        plt.savefig('results/plots/improved_transformer_t2_metrics.png')
+        plt.savefig("results/plots/improved_transformer_t2_metrics.png")
         print("Plot saved as improved_transformer_t2_metrics.png")
         
     plt.close()

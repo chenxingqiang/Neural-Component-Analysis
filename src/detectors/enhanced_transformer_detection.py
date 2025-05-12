@@ -422,7 +422,7 @@ def contribution_plot(model, faulty_sample, normal_data, device, n_top=10):
     plt.xlabel('Variable')
     plt.ylabel('Contribution')
     plt.tight_layout()
-    plt.savefig('results/plots/fault_contribution_plot.png')
+    plt.savefig("results/plots/fault_contribution_plot.png")
     plt.close()
     
     return top_indices, top_contributions

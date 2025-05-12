@@ -136,7 +136,7 @@ def plot_comparison(t2_pca, spe_pca, t2_transformer, spe_transformer,
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('results/plots/te_comparison_fault_detection.png')
+    plt.savefig("results/plots/te_comparison_fault_detection.png")
     print("Plot saved as te_comparison_fault_detection.png")
     plt.close()
 
@@ -266,7 +266,7 @@ def main():
             validation_split=0.2
         )
         
-        torch.save(enhanced_model.state_dict(), 'results/models/enhanced_transformer_autoencoder.pth')
+        torch.save(model.state_dict(), "results/models/enhanced_transformer_autoencoder.pth")
         print("Enhanced model trained and saved.")
     
     enhanced_model.to(device)
@@ -293,7 +293,7 @@ def main():
             validation_split=0.2
         )
         
-        torch.save(improved_model.state_dict(), 'results/models/improved_transformer_t2_new.pth')
+        torch.save(improved_model.state_dict(), "results/models/improved_transformer_t2_new.pth")
         print("Improved model trained and saved as improved_transformer_t2_new.pth")
     
     improved_model.to(device)

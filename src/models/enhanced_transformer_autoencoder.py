@@ -294,7 +294,7 @@ def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
     plt.title('Enhanced Transformer Autoencoder Training Process')
     plt.legend()
     plt.grid(True)
-    plt.savefig('results/plots/enhanced_transformer_loss.png')
+    plt.savefig("results/plots/enhanced_transformer_loss.png")
     plt.close()
     
     # 加载最佳模型

@@ -87,7 +87,7 @@ def transformer_enhanced_two_stage_detector(X_train, X_test, happen, top_feature
     start_time = time.time()
     
     # First utilize the balanced two-stage detector for initial detection
-    from run_secom_fault_detection import balanced_two_stage_detector
+    from scripts.run_secom_fault_detection import balanced_two_stage_detector
     initial_results = balanced_two_stage_detector(X_train, X_test, happen, top_features)
     
     # Extract T² and SPE statistics from the balanced detector
@@ -376,7 +376,7 @@ def transformer_enhanced_two_stage_detector(X_train, X_test, happen, top_feature
             # Save best model
             if avg_loss < best_loss_t2:
                 best_loss_t2 = avg_loss
-                torch.save(model_t2.state_dict(), 'results/models/transformer_refiner_t2.pth')
+                torch.save(model_t2.state_dict(), "results/models/transformer_refiner_t2.pth")
         
         # Load best model
         model_t2.load_state_dict(torch.load('results/models/transformer_refiner_t2.pth', map_location=device))
@@ -447,7 +447,7 @@ def transformer_enhanced_two_stage_detector(X_train, X_test, happen, top_feature
             # Save best model
             if avg_loss < best_loss_spe:
                 best_loss_spe = avg_loss
-                torch.save(model_spe.state_dict(), 'results/models/transformer_refiner_spe.pth')
+                torch.save(model_spe.state_dict(), "results/models/transformer_refiner_spe.pth")
         
         # Load best model
         model_spe.load_state_dict(torch.load('results/models/transformer_refiner_spe.pth', map_location=device))
@@ -551,7 +551,7 @@ def transformer_enhanced_two_stage_detector(X_train, X_test, happen, top_feature
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('results/plots/transformer_enhanced_two_stage.png')
+    plt.savefig("results/plots/transformer_enhanced_two_stage.png")
     plt.close()
     
     # Print results

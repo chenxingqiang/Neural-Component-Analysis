@@ -1,14 +1,17 @@
 """
-检测器模块 - 包含各种故障检测器实现
+Detectors module - Implementation of various fault detectors
 """
 
-from .fault_detector_factory import create_fault_detector
+from .fault_detector_factory import FaultDetectorFactory
 from .spe_fault_detector import SPEFaultDetector
-from .enhanced_transformer_detection import EnhancedTransformerDetector
-# 根据实际情况导入其他检测器
+from .enhanced_transformer_detection import EnhancedTransformerModel
+
+# Create alias for backward compatibility
+create_fault_detector = FaultDetectorFactory.create_detector
 
 __all__ = [
     'create_fault_detector',
+    'FaultDetectorFactory',
     'SPEFaultDetector',
-    'EnhancedTransformerDetector',
+    'EnhancedTransformerModel',
 ] 
