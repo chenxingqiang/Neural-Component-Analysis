@@ -51,7 +51,7 @@ def plot_comparison(t2_pca, spe_pca, t2_transformer, spe_transformer,
                    t2_improved, spe_improved,
                    t2_limit_pca, spe_limit_pca, 
                    t2_limit_transformer, spe_limit_transformer,
-                   t2_limit_improved, spe_limit_improved, happen):
+                   t2_limit_improved, spe_limit_improved, happen, title_prefix="TE"):
     """Create comparison plots between PCA, Enhanced Transformer, and Improved Transformer detection"""
     plt.figure(figsize=(15, 15))
     
@@ -136,8 +136,12 @@ def plot_comparison(t2_pca, spe_pca, t2_transformer, spe_transformer,
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig("results/plots/te_comparison_fault_detection.png")
-    print("Plot saved as te_comparison_fault_detection.png")
+    # Make sure the plots directory exists
+    os.makedirs("results/plots", exist_ok=True)
+    # Use title_prefix for the filename
+    filename_prefix = title_prefix.lower()
+    plt.savefig(f"results/plots/{filename_prefix}_comparison_fault_detection.png")
+    print(f"Plot saved as {filename_prefix}_comparison_fault_detection.png")
     plt.close()
 
 
@@ -200,7 +204,7 @@ def print_comparison_table(pca_false_rates, pca_miss_rates,
     print("="*90)
 
 
-def main(skip_improved_transformer=False):
+def main(skip_improved_transformer=False, model_paths=None):
     """
     Main function to run the comparison between PCA and transformer-based fault detection methods
     
@@ -208,8 +212,17 @@ def main(skip_improved_transformer=False):
     -----------
     skip_improved_transformer : bool
         If True, skip the improved transformer model (faster execution)
+    model_paths : dict
+        Dictionary containing paths for model files, with keys 'enhanced' and 'improved'
     """
     start_time = time.time()
+    
+    # Set default model paths if not provided
+    if model_paths is None:
+        model_paths = {
+            'enhanced': 'results/models/te_enhanced_transformer_autoencoder.pth',
+            'improved': 'results/models/te_improved_transformer_t2.pth'
+        }
     
     # Load data
     X_train, X_test, happen = load_data(is_mock=True)  # Use mock data for demonstration
@@ -258,12 +271,16 @@ def main(skip_improved_transformer=False):
     print("\nSetting up enhanced transformer model...")
     enhanced_model = EnhancedTransformerAutoencoder(input_dim, hidden_dim)
     
+    # Get enhanced model path
+    enhanced_model_path = model_paths['enhanced']
+    
     # Try to load pre-trained model or train a new one
     try:
-        enhanced_model.load_state_dict(torch.load('results/models/enhanced_transformer_autoencoder.pth', map_location=device))
-        print("Loaded pre-trained enhanced transformer model")
+        # Try to load with provided path
+        enhanced_model.load_state_dict(torch.load(enhanced_model_path, map_location=device))
+        print(f"Loaded pre-trained enhanced transformer model from {enhanced_model_path}")
     except:
-        print("Pre-trained enhanced model not found. Training a new model...")
+        print(f"Pre-trained enhanced model not found at {enhanced_model_path}. Training a new model...")
         enhanced_model, _, _ = train_enhanced_model(
             X_train, 
             epochs=50,
@@ -273,8 +290,8 @@ def main(skip_improved_transformer=False):
             validation_split=0.2
         )
         
-        torch.save(enhanced_model.state_dict(), "results/models/enhanced_transformer_autoencoder.pth")
-        print("Enhanced model trained and saved.")
+        torch.save(enhanced_model.state_dict(), enhanced_model_path)
+        print(f"Enhanced model trained and saved to {enhanced_model_path}")
     
     enhanced_model.to(device)
     
@@ -296,12 +313,15 @@ def main(skip_improved_transformer=False):
         improved_hidden_dim = (hidden_dim // 4) * 4
         improved_model = ImprovedTransformerAutoencoder(input_dim, improved_hidden_dim)
         
+        # Get improved model path
+        improved_model_path = model_paths['improved']
+        
         # Try to load pre-trained model or train a new one
         try:
-            improved_model.load_state_dict(torch.load('results/models/improved_transformer_t2.pth', map_location=device))
-            print("Loaded pre-trained improved transformer model")
+            improved_model.load_state_dict(torch.load(improved_model_path, map_location=device))
+            print(f"Loaded pre-trained improved transformer model from {improved_model_path}")
         except Exception as e:
-            print(f"Pre-trained improved model not found or incompatible: {str(e)}")
+            print(f"Pre-trained improved model not found at {improved_model_path} or incompatible: {str(e)}")
             print("Training a new improved transformer model...")
             improved_model, _, _ = train_improved_model(
                 X_train, 
@@ -312,8 +332,8 @@ def main(skip_improved_transformer=False):
                 validation_split=0.2
             )
             
-            torch.save(improved_model.state_dict(), "results/models/improved_transformer_t2_new.pth")
-            print("Improved model trained and saved as improved_transformer_t2_new.pth")
+            torch.save(improved_model.state_dict(), improved_model_path)
+            print(f"Improved model trained and saved to {improved_model_path}")
         
         improved_model.to(device)
         
@@ -436,7 +456,8 @@ def main(skip_improved_transformer=False):
         t2_limit_pca, spe_limit_pca, 
         t2_limit_enhanced, spe_limit_enhanced,
         t2_limit_improved, spe_limit_improved,
-        happen
+        happen,
+        title_prefix="TE"
     )
     
     runtime = time.time() - start_time

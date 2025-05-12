@@ -65,7 +65,21 @@ from src.models.transformer_enhanced_two_stage import transformer_enhanced_two_s
 from scipy import stats
 
 
-def plot_comparison(detection_results, happen, title_prefix="SECOM Detection Methods"):
+def plot_comparison(detection_results, happen, title_prefix=None):
+    """Plot comparison of different detection methods
+    
+    Parameters:
+    -----------
+    detection_results : dict
+        Dictionary containing results from different methods
+    happen : int
+        Index of first fault sample
+    title_prefix : str, optional
+        Prefix for plot title, defaults to "SECOM Detection Methods"
+    """
+    # Set default title prefix if not provided
+    if title_prefix is None:
+        title_prefix = "SECOM Detection Methods"
     """
     Plot comparison of different detection methods' statistics.
     
@@ -151,8 +165,19 @@ def plot_comparison(detection_results, happen, title_prefix="SECOM Detection Met
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig("results/plots/secom_comparison_fault_detection.png")
-    print("Plot saved as secom_comparison_fault_detection.png")
+    # Make sure the plots directory exists
+    os.makedirs("results/plots", exist_ok=True)
+    # Make sure the plots directory exists
+    os.makedirs("results/plots", exist_ok=True)
+    
+    # Use title_prefix to determine filename prefix
+    filename_prefix = "secom"
+    if title_prefix and not title_prefix.startswith("SECOM"):
+        # Extract dataset name from title if different from SECOM
+        filename_prefix = title_prefix.split()[0].lower()
+    
+    plt.savefig(f"results/plots/{filename_prefix}_comparison_fault_detection.png")
+    print(f"Plot saved as {filename_prefix}_comparison_fault_detection.png")
     plt.close()
 
 
@@ -421,7 +446,7 @@ def calculate_control_limits(values, method='kde', confidence=0.99, false_alarm_
     return np.max(values) * 1.1  # 10% above max
 
 
-def main(skip_improved_transformer=False, include_transformer=False, skip_pca=False):
+def main(skip_improved_transformer=False, include_transformer=False, skip_pca=False, model_paths=None):
     """
     Main function to run all methods and plot comparison
     
@@ -433,12 +458,21 @@ def main(skip_improved_transformer=False, include_transformer=False, skip_pca=Fa
         If True, include the Transformer-enhanced Two-Stage detector
     skip_pca : bool
         If True, skip the PCA baseline method
+    model_paths : dict
+        Dictionary containing paths for model files, with keys 'enhanced' and 'improved'
         
     Returns:
     --------
     dict
         Detection results for all methods
     """
+    # Set default model paths if not provided
+    if model_paths is None:
+        model_paths = {
+            'enhanced': 'results/models/secom_enhanced_transformer.pth',
+            'improved': 'results/models/secom_improved_transformer.pth'
+        }
+
     print("=" * 60)
     print("SECOM Fault Detection Methods Comparison")
     print("=" * 60)
@@ -571,7 +605,7 @@ def main(skip_improved_transformer=False, include_transformer=False, skip_pca=Fa
     
     # 2. Run Enhanced Transformer detection
     print("\nSetting up enhanced transformer model...")
-    enhanced_results = run_enhanced_transformer_detection(X_train, X_test, happen)
+    enhanced_results = run_enhanced_transformer_detection(X_train, X_test, happen, model_path=model_paths['enhanced'])
     
     # Ensure all fields exist in the enhanced_results dictionary
     enhanced_results['t2_false_alarm_rate'] = enhanced_results['false_rates'][0] if 'false_rates' in enhanced_results and len(enhanced_results['false_rates']) > 0 else 0.0
@@ -603,7 +637,7 @@ def main(skip_improved_transformer=False, include_transformer=False, skip_pca=Fa
     # 3. Run Improved Transformer detection (SPE only) if not skipped
     if not skip_improved_transformer:
         print("\nSetting up improved transformer model...")
-        improved_results = run_improved_transformer_detection(X_train, X_test, happen)
+        improved_results = run_improved_transformer_detection(X_train, X_test, happen, model_path=model_paths['improved'])
         
         # Ensure key fields exist in improved_transformer
         if 'spe_statistics' in improved_results and 'spe_test' not in improved_results:
