@@ -2015,7 +2015,7 @@ def main():
         ("Ultra-Sensitive Ensemble", ensemble_results['miss_rate']),
         ("Extreme Anomaly Detector", anomaly_results['miss_rate']),
         ("Ultra-Extreme Anomaly Detector", ultra_extreme_results['miss_rate']),
-        ("Balanced Two-Stage Detector", balanced_results['miss_rate'])
+        ("Balanced Two-Stage Detector", (balanced_results['t2_miss_rate'] + balanced_results['spe_miss_rate']) / 2)
     ]
     
     # Methods that meet miss rate target (<5%)
@@ -2044,7 +2044,7 @@ def main():
             elif name == "Ultra-Extreme Anomaly Detector":
                 far = ultra_extreme_results['false_alarm_rate']
             elif name == "Balanced Two-Stage Detector":
-                far = balanced_results['false_alarm_rate']
+                far = (balanced_results['t2_false_alarm_rate'] + balanced_results['spe_false_alarm_rate']) / 2
             
             target_methods_with_far.append((name, miss_rate, far))
         
