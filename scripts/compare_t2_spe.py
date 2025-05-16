@@ -7,6 +7,9 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
+# Import utility functions
+from scripts.utils import save_plot
+
 from scripts.run_secom_fault_detection import balanced_two_stage_detector, load_secom_data
 
 def visualize_balanced_detector_metrics():
@@ -96,8 +99,7 @@ def visualize_balanced_detector_metrics():
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig("results/plots/t2_spe_comparison.png")
-    print("Plot saved as t2_spe_comparison.png")
+    save_plot("t2_spe_comparison.png")
     
     # Print summary
     print("\nBalanced Two-Stage Detector Summary:")

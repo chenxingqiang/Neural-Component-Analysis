@@ -40,7 +40,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-import torch.utils.data
 from torch.utils.data import DataLoader, TensorDataset
 import time
 import argparse
@@ -551,10 +550,8 @@ def plot_comparison(results, happen, dataset_name="SECOM"):
 
     plt.tight_layout()
 
-    # Save plot
-    os.makedirs("results/plots", exist_ok=True)
-    plt.savefig(f"results/plots/{dataset_name.lower()}_transformer_comparison.png")
-    print(f"Plot saved as {dataset_name.lower()}_transformer_comparison.png")
+    # Save plot using utility function
+    save_plot(f"{dataset_name.lower()}_transformer_comparison.png")
     plt.close()
 
 

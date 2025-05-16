@@ -1,14 +1,21 @@
+import os
+import sys
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-import os
-import sys
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-import time
+import warnings
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
+
+# Import utility functions
+from scripts.utils import save_plot
 
 from src.models.enhanced_transformer_autoencoder import (
     EnhancedTransformerAutoencoder, 
@@ -179,7 +186,7 @@ def combined_fault_detection(t2_values, spe_values, happen, t2_weight=0.4, spe_w
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig("results/plots/secom_combined_detection.png")
+    save_plot("secom_combined_detection.png")
     plt.close()
     
     return {
@@ -337,7 +344,7 @@ def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='resu
         plt.ylabel('Loss')
         plt.legend()
         plt.grid(True, alpha=0.3)
-        plt.savefig("results/plots/secom_enhanced_transformer_training.png")
+        save_plot("secom_enhanced_transformer_training.png")
         plt.close()
     
     model.to(device)
@@ -504,7 +511,7 @@ def run_improved_transformer_detection(X_train, X_test, happen, model_path='resu
     plt.ylabel('SPE')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig("results/plots/secom_improved_transformer_spe.png")
+    save_plot("secom_improved_transformer_spe.png")
     plt.close()
     
     runtime = time.time() - start_time
@@ -632,7 +639,7 @@ def analyze_feature_importance(model, X_train, X_test, happen, device, n_top=20)
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig("results/plots/secom_feature_importance.png")
+    save_plot("secom_feature_importance.png")
     plt.close()
     
     # Detailed analysis of top features
@@ -729,7 +736,7 @@ def run_feature_selected_model(X_train, X_test, happen, importance_results, n_fe
     plt.ylabel('Loss')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(f'results/plots/secom_selected_{n_features}_features_training.png')
+    save_plot(f'secom_selected_{n_features}_features_training.png')
     plt.close()
     
     model.to(device)
@@ -769,7 +776,7 @@ def run_feature_selected_model(X_train, X_test, happen, importance_results, n_fe
     plt.ylabel('SPE')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(f'results/plots/secom_selected_{n_features}_features_spe.png')
+    save_plot(f'secom_selected_{n_features}_features_spe.png')
     plt.close()
     
     runtime = time.time() - start_time
@@ -981,7 +988,7 @@ def ultra_sensitive_ensemble_detector(X_train, X_test, happen, importance_result
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig("results/plots/secom_ultra_sensitive_ensemble.png")
+    save_plot("secom_ultra_sensitive_ensemble.png")
     plt.close()
     
     print(f"\nUltra-Sensitive Ensemble Results:")
@@ -1142,7 +1149,7 @@ def extreme_anomaly_detector(X_train, X_test, happen, top_features):
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig("results/plots/secom_extreme_anomaly_detector.png")
+    save_plot("secom_extreme_anomaly_detector.png")
     plt.close()
     
     print(f"\nExtreme Anomaly Detector Results:")
@@ -1395,7 +1402,7 @@ def ultra_extreme_anomaly_detector(X_train, X_test, happen, top_features):
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig("results/plots/secom_ultra_extreme_detection.png")
+    save_plot("secom_ultra_extreme_detection.png")
     plt.close()
     
     print(f"\n Ultra-Extreme Anomaly Detector Results:")
@@ -1791,7 +1798,7 @@ def balanced_two_stage_detector(X_train, X_test, happen, top_features):
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig("results/plots/secom_balanced_two_stage_detection.png")
+    save_plot("secom_balanced_two_stage_detection.png")
     plt.close()
     
     # Summary information

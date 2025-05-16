@@ -49,6 +49,9 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
+# Import the utility functions
+from scripts.utils import save_plot
+
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -171,19 +174,14 @@ def plot_comparison(detection_results, happen, title_prefix=None):
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    # Make sure the plots directory exists
-    os.makedirs("results/plots", exist_ok=True)
-    # Make sure the plots directory exists
-    os.makedirs("results/plots", exist_ok=True)
-    
     # Use title_prefix to determine filename prefix
     filename_prefix = "secom"
     if title_prefix and not title_prefix.startswith("SECOM"):
         # Extract dataset name from title if different from SECOM
         filename_prefix = title_prefix.split()[0].lower()
     
-    plt.savefig(f"results/plots/{filename_prefix}_comparison_fault_detection.png")
-    print(f"Plot saved as {filename_prefix}_comparison_fault_detection.png")
+    # Use the save_plot utility function
+    save_plot(f"{filename_prefix}_comparison_fault_detection.png")
     plt.close()
 
 
