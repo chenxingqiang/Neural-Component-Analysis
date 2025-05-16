@@ -29,13 +29,19 @@ Usage:
   python transformer_comparison_detection.py [--dataset secom|te] [--skip_basic]
 """
 
+import os
+import sys
+
+# Add the project root directory to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.utils.data
 from torch.utils.data import DataLoader, TensorDataset
-import os
 import time
 import argparse
 from sklearn.preprocessing import StandardScaler
@@ -43,8 +49,163 @@ from sklearn.decomposition import PCA
 from scipy import stats
 
 # Import necessary modules
-from neural_component_analysis.models.transformer_autoencoder import TransformerAutoencoder
-from neural_component_analysis.models.enhanced_transformer_autoencoder import EnhancedTransformerAutoencoder
+from src.detectors.spe_fault_detector import TransformerAutoencoder as BaseTransformerAutoencoder
+from src.models.enhanced_transformer_autoencoder import EnhancedTransformerAutoencoder as BaseEnhancedTransformerAutoencoder
+
+# Extend the TransformerAutoencoder class to add save, load, and transform methods
+class TransformerAutoencoder(BaseTransformerAutoencoder):
+    def __init__(self, input_dim, hidden_dim=None, latent_dim=None, num_heads=4, num_layers=2, 
+                 num_encoder_layers=None, num_decoder_layers=None, nhead=None, dim_feedforward=None, dropout=0.1):
+        # Handle different parameter naming conventions
+        if hidden_dim is None and latent_dim is not None:
+            hidden_dim = latent_dim * 2  # Use latent_dim to set hidden_dim if provided
+        elif hidden_dim is None:
+            hidden_dim = input_dim  # Default if neither is provided
+            
+        if nhead is not None and num_heads == 4:  # Only override if explicitly provided
+            num_heads = nhead
+            
+        if num_encoder_layers is not None and num_layers == 2:
+            num_layers = num_encoder_layers
+            
+        # Initialize with the base class parameters
+        super().__init__(input_dim=input_dim, hidden_dim=hidden_dim, 
+                         num_heads=num_heads, num_layers=num_layers, dropout=dropout)
+        
+        # Store latent dimension for compatibility
+        self.latent_dim = hidden_dim // 2
+    
+    def save(self, path):
+        """Save model to file"""
+        torch.save(self.state_dict(), path)
+        print(f"Model saved to {path}")
+    
+    def load(self, path):
+        """Load model from file"""
+        self.load_state_dict(torch.load(path))
+        self.eval()
+        print(f"Model loaded from {path}")
+        
+    def _transform(self, x):
+        """Transform input to latent space"""
+        # Input embedding
+        embedded = self.feature_embedding(x)
+        
+        # Transformer encoder
+        encoded = self.transformer_encoder(embedded)
+        
+        # Extract latent representation from bottleneck
+        bottleneck_features = self.bottleneck(encoded)
+        
+        # Return the bottleneck features as latent representation
+        return bottleneck_features
+    
+    def _inverse_transform(self, z):
+        """Transform latent representation back to input space"""
+        # Self-attention for feature emphasis
+        attn_output, _ = self.attention(z, z, z)
+        
+        # Transformer decoder
+        decoded = self.transformer_decoder(attn_output + z)
+        
+        # Output projection
+        output = self.output_layer(decoded)
+        
+        return output
+        
+    def forward(self, x):
+        """Forward pass through the model"""
+        # Ensure we return a tensor and not a tuple
+        z = self._transform(x)
+        output = self._inverse_transform(z)
+        return output
+
+
+# Extend the EnhancedTransformerAutoencoder class to add save, load, and transform methods
+class EnhancedTransformerAutoencoder(BaseEnhancedTransformerAutoencoder):
+    def __init__(self, input_dim, hidden_dim=None, latent_dim=None, num_heads=4, num_layers=3, 
+                 num_encoder_layers=None, num_decoder_layers=None, nhead=None, dim_feedforward=None, dropout=0.1,
+                 activation=None, use_residual=None, **kwargs):
+        # Handle different parameter naming conventions
+        if hidden_dim is None and latent_dim is not None:
+            hidden_dim = latent_dim * 2  # Use latent_dim to set hidden_dim if provided
+        elif hidden_dim is None:
+            hidden_dim = input_dim  # Default if neither is provided
+            
+        if nhead is not None and num_heads == 4:  # Only override if explicitly provided
+            num_heads = nhead
+            
+        if num_encoder_layers is not None and num_layers == 3:
+            num_layers = num_encoder_layers
+            
+        # Initialize with the base class parameters
+        super().__init__(input_dim=input_dim, hidden_dim=hidden_dim, 
+                         nhead=num_heads, num_layers=num_layers, dropout=dropout)
+        
+        # Store latent dimension for compatibility
+        self.latent_dim = hidden_dim // 2
+    
+    def save(self, path):
+        """Save model to file"""
+        torch.save(self.state_dict(), path)
+        print(f"Model saved to {path}")
+    
+    def load(self, path):
+        """Load model from file"""
+        self.load_state_dict(torch.load(path))
+        self.eval()
+        print(f"Model loaded from {path}")
+        
+    def _transform(self, x):
+        """Transform input to latent space"""
+        # Input embedding
+        embedded = self.input_embedding(x)
+        
+        # Add positional encoding if available
+        if hasattr(self, 'positional_encoding'):
+            embedded = self.positional_encoding(embedded)
+        
+        # Transformer encoder
+        encoded = self.transformer_encoder(embedded)
+        
+        # Bottleneck - use the dual path if available
+        if hasattr(self, 'bottleneck_mlp') and hasattr(self, 'bottleneck_attention'):
+            # Dual path architecture
+            mlp_features = self.bottleneck_mlp(encoded)
+            attn_features = self.bottleneck_attention(encoded, encoded, encoded)[0]
+            bottleneck_features = mlp_features + attn_features
+        else:
+            # Use standard bottleneck if dual path not available
+            bottleneck_features = encoded
+        
+        return bottleneck_features
+    
+    def _inverse_transform(self, z):
+        """Transform latent representation back to input space"""
+        # Decoder processing
+        if hasattr(self, 'transformer_decoder'):
+            decoded = self.transformer_decoder(z)
+        else:
+            decoded = z
+        
+        # Output projection
+        if hasattr(self, 'decoder'):
+            output = self.decoder(decoded)
+        elif hasattr(self, 'output_mlp'):
+            output = self.output_mlp(decoded)
+        elif hasattr(self, 'output_layer'):
+            output = self.output_layer(decoded)
+        else:
+            raise AttributeError("No decoder found in the model")
+        
+        return output
+        
+    def forward(self, x):
+        """Forward pass through the model"""
+        # Ensure we return a tensor and not a tuple
+        z = self._transform(x)
+        output = self._inverse_transform(z)
+        return output
 
 
 def load_secom_data(data_dir='data/secom'):
@@ -529,11 +690,9 @@ def run_comparison_on_dataset(dataset_name, skip_basic=False):
         # Initialize model
         basic_transformer = TransformerAutoencoder(
             input_dim=input_dim,
-            latent_dim=latent_dim,
-            num_encoder_layers=3,
-            num_decoder_layers=3,
-            nhead=nhead,  # Using the calculated nhead value
-            dim_feedforward=256,
+            hidden_dim=latent_dim*2,  # Using latent_dim*2 as hidden_dim
+            num_heads=nhead,  # Using the calculated nhead value
+            num_layers=3,  # Using the same number of layers as before
             dropout=0.1
         )
         
@@ -608,7 +767,20 @@ def run_comparison_on_dataset(dataset_name, skip_basic=False):
     try:
         if os.path.exists(model_file):
             print(f"Loading existing model from {model_file}")
-            enhanced_transformer = EnhancedTransformerAutoencoder.load(model_file, map_location=device)
+            # Create model instance first, then load weights
+            enhanced_transformer = EnhancedTransformerAutoencoder(
+                input_dim=input_dim,
+                latent_dim=latent_dim,
+                num_encoder_layers=4,
+                num_decoder_layers=4,
+                nhead=nhead,
+                dim_feedforward=512,
+                dropout=0.1,
+                activation='relu',
+                use_residual=True
+            )
+            enhanced_transformer.load(model_file)
+            enhanced_transformer = enhanced_transformer.to(device)
             print("Model loaded successfully")
         else:
             print(f"Model file not found at {model_file}, training new model...")

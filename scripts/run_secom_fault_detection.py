@@ -2,9 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import os
+import sys
 from sklearn.preprocessing import StandardScaler
 import time
-import sys
+
+# Add the project root directory to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
 from src.models.enhanced_transformer_autoencoder import (
     EnhancedTransformerAutoencoder, 
     calculate_weighted_spe,

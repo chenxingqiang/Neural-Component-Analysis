@@ -42,14 +42,20 @@ Usage:
 See the README_COMPARISON.md file for more details.
 """
 
+import os
+import sys
+
+# Add the project root directory to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-import os
 import time
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from run_secom_fault_detection import (
+from scripts.run_secom_fault_detection import (
     load_secom_data,
     run_enhanced_transformer_detection,
     run_improved_transformer_detection,
