@@ -1996,12 +1996,12 @@ def main():
         ultra_extreme_results['detection_time'] if ultra_extreme_results['detection_time'] is not None else "Not Detected"
     ))
     
-    # Balanced two-stage detector
+    # Balanced two-stage detector - use average of T2 and SPE metrics for the summary table
     print("{:<30} | {:<15.2f} | {:<15.2f} | {:<15}".format(
         "Balanced Two-Stage Detector",
-        balanced_results['false_alarm_rate'],
-        balanced_results['miss_rate'],
-        balanced_results['detection_time'] if balanced_results['detection_time'] is not None else "Not Detected"
+        (balanced_results['t2_false_alarm_rate'] + balanced_results['spe_false_alarm_rate']) / 2,
+        (balanced_results['t2_miss_rate'] + balanced_results['spe_miss_rate']) / 2,
+        balanced_results['t2_detection_time'] if balanced_results['t2_detection_time'] is not None else "Not Detected"
     ))
     
     # Find the best methods for different criteria

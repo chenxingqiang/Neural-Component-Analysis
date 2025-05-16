@@ -1,6 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from run_secom_fault_detection import balanced_two_stage_detector, load_secom_data
+import os
+import sys
+
+# Add the project root directory to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
+from scripts.run_secom_fault_detection import balanced_two_stage_detector, load_secom_data
 
 def visualize_balanced_detector_metrics():
     """
