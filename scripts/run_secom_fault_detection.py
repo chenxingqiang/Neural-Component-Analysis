@@ -729,7 +729,7 @@ def run_feature_selected_model(X_train, X_test, happen, importance_results, n_fe
     plt.ylabel('Loss')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(f'secom_selected_{n_features}_features_training.png')
+    plt.savefig(f'results/plots/secom_selected_{n_features}_features_training.png')
     plt.close()
     
     model.to(device)
@@ -769,7 +769,7 @@ def run_feature_selected_model(X_train, X_test, happen, importance_results, n_fe
     plt.ylabel('SPE')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(f'secom_selected_{n_features}_features_spe.png')
+    plt.savefig(f'results/plots/secom_selected_{n_features}_features_spe.png')
     plt.close()
     
     runtime = time.time() - start_time
