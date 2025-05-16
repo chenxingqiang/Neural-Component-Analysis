@@ -2,9 +2,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import os
+import sys
 from scipy import stats
 from sklearn.preprocessing import StandardScaler
 import time
+
+# Add the project root directory to the Python path for imports
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, project_root)
+from scripts.utils import save_plot
 from src.models.enhanced_transformer_autoencoder import (
     EnhancedTransformerAutoencoder, 
     calculate_weighted_spe,
@@ -385,8 +391,8 @@ def plot_enhanced_metrics(t2_test, spe_test, t2_limit, spe_limit, happen, title_
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(f'{title_prefix.lower().replace(" ", "_")}_fault_detection.png')
-    print(f"Chart saved as {title_prefix.lower().replace(' ', '_')}_fault_detection.png")
+    save_plot(f'{title_prefix.lower().replace(" ", "_")}_fault_detection.png')
+    # The save_plot utility function handles the print statement
     plt.close()
 
 

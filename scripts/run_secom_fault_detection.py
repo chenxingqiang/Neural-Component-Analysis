@@ -724,7 +724,9 @@ def run_feature_selected_model(X_train, X_test, happen, importance_results, n_fe
     )
     
     # Save model
-    model_path = f'secom_selected_{n_features}_features.pth'
+    # Ensure models directory exists
+    os.makedirs("results/models", exist_ok=True)
+    model_path = f'results/models/secom_selected_{n_features}_features.pth'
     torch.save(model.state_dict(), model_path)
     
     # Plot training curves
