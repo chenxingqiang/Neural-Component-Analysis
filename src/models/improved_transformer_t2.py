@@ -5,6 +5,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 import time
+import os
+from datetime import datetime
+from src.utils.model_saver import save_model
 
 class ImprovedTransformerAutoencoder(nn.Module):
     """
@@ -279,10 +282,32 @@ def calculate_improved_t2(model, data, device, cov_matrix=None, mean_vector=None
     return np.array(t2_values), cov_matrix, mean_vector
 
 
-def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_dim=None, validation_split=0.1):
+def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_dim=None, validation_split=0.1, 
+                         dataset_name="unknown", category=None, save_interval=10):
     """
     Train the improved Transformer model with specific focus on T² performance
     using a two-stage training approach
+    
+    Parameters:
+    -----------
+    X_train : numpy.ndarray
+        Training data
+    epochs : int
+        Number of training epochs
+    batch_size : int
+        Training batch size
+    lr : float
+        Learning rate
+    hidden_dim : int
+        Hidden dimension size, if None will be determined automatically
+    validation_split : float
+        Fraction of data to use for validation
+    dataset_name : str
+        Name of the dataset being used (e.g., 'TE', 'SECOM')
+    category : int or None
+        Fault category number (if applicable)
+    save_interval : int
+        Number of epochs between saving model checkpoints
     """
     # Determine device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -296,6 +321,13 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
     input_dim = X_train.shape[1]
     model = ImprovedTransformerAutoencoder(input_dim, hidden_dim)
     model.to(device)
+    
+    # Create results directories
+    os.makedirs("results/models", exist_ok=True)
+    os.makedirs("results/plots", exist_ok=True)
+    
+    # Define model name for saving
+    model_name = "improved_transformer_t2"
     
     # Split data into training and validation
     indices = np.random.permutation(len(X_train))
@@ -312,6 +344,22 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
     
     train_loader = torch.utils.data.DataLoader(train_tensor, batch_size=batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_tensor, batch_size=batch_size)
+    
+    # Save initial model
+    initial_model_path = save_model(
+        model, 
+        model_name=model_name,
+        dataset_name=dataset_name,
+        category=category,
+        version="initial",
+        additional_info={
+            'train_loss': 0.0,
+            'val_loss': 0.0,
+            'epoch': 0,
+            'stage': 'initial',
+            'best': False
+        }
+    )
     
     # Define two-stage training process
     print("Starting two-stage training process...")
@@ -343,10 +391,14 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
     
     best_val_loss = float('inf')
     best_model = None
+    best_model_path = initial_model_path
     patience = 10
     patience_counter = 0
     
     stage1_epochs = min(40, epochs // 2)  # Use fewer epochs for stage 1
+    
+    # Track start time
+    start_time = time.time()
     
     for epoch in range(stage1_epochs):
         # Training phase
@@ -385,6 +437,23 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
         val_loss = val_loss / len(val_loader)
         val_losses.append(val_loss)
         
+        # Save model at specified intervals
+        if (epoch + 1) % save_interval == 0:
+            save_model(
+                model, 
+                model_name=model_name,
+                dataset_name=dataset_name,
+                category=category,
+                version=f"stage1_epoch{epoch+1}",
+                additional_info={
+                    'train_loss': train_loss,
+                    'val_loss': val_loss,
+                    'epoch': epoch + 1,
+                    'stage': 'stage1',
+                    'best': False
+                }
+            )
+        
         # Learning rate scheduling
         scheduler.step(val_loss)
         
@@ -392,6 +461,20 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_model = model.state_dict().copy()
+            best_model_path = save_model(
+                model, 
+                model_name=model_name,
+                dataset_name=dataset_name,
+                category=category,
+                version="stage1_best",
+                additional_info={
+                    'train_loss': train_loss,
+                    'val_loss': val_loss,
+                    'epoch': epoch + 1,
+                    'stage': 'stage1',
+                    'best': True
+                }
+            )
             patience_counter = 0
         else:
             patience_counter += 1
@@ -403,10 +486,26 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
         if (epoch + 1) % 10 == 0 or epoch == 0:
             print(f"Stage 1 - Epoch {epoch+1}/{stage1_epochs}, Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
     
+    # Save stage 1 final model
+    stage1_final_model_path = save_model(
+        model, 
+        model_name=model_name,
+        dataset_name=dataset_name,
+        category=category,
+        version="stage1_final",
+        additional_info={
+            'train_loss': train_loss,
+            'val_loss': val_loss,
+            'epoch': epoch + 1,
+            'stage': 'stage1_final',
+            'best': False
+        }
+    )
+    
     # Load best model from stage 1
     if best_model is not None:
         model.load_state_dict(best_model)
-        print("Loaded best model from Stage 1")
+        print(f"Loaded best model from Stage 1: {best_model_path}")
     
     # Stage 2: Focus on T² discrimination
     print("\nStage 2: Training for T² discrimination...")
@@ -453,6 +552,7 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
     # Reset training variables
     best_val_loss = float('inf')
     best_model = None
+    best_stage2_model_path = stage1_final_model_path
     patience_counter = 0
     patience = 15  # Longer patience for stage 2
     
@@ -473,7 +573,7 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
             loss = stage2_loss(reconstructed, batch_data, features)
             loss.backward()
             
-            # Gradient clipping
+            # Gradient clipping to prevent explosion
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             
             optimizer.step()
@@ -496,6 +596,23 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
         val_loss = val_loss / len(val_loader)
         val_losses.append(val_loss)
         
+        # Save model at specified intervals
+        if (epoch + 1) % save_interval == 0:
+            save_model(
+                model, 
+                model_name=model_name,
+                dataset_name=dataset_name,
+                category=category,
+                version=f"stage2_epoch{epoch+1}",
+                additional_info={
+                    'train_loss': train_loss,
+                    'val_loss': val_loss,
+                    'epoch': epoch + 1,
+                    'stage': 'stage2',
+                    'best': False
+                }
+            )
+        
         # Learning rate scheduling
         scheduler.step(val_loss)
         
@@ -503,6 +620,20 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_model = model.state_dict().copy()
+            best_stage2_model_path = save_model(
+                model, 
+                model_name=model_name,
+                dataset_name=dataset_name,
+                category=category,
+                version="stage2_best",
+                additional_info={
+                    'train_loss': train_loss,
+                    'val_loss': val_loss,
+                    'epoch': epoch + 1,
+                    'stage': 'stage2',
+                    'best': True
+                }
+            )
             patience_counter = 0
         else:
             patience_counter += 1
@@ -510,17 +641,54 @@ def train_improved_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
                 print(f"Early stopping stage 2 at epoch {epoch+1}")
                 break
         
-        # Print progress
-        if (epoch + 1) % 10 == 0 or epoch == 0:
+        # Print progress every few epochs
+        if (epoch + 1) % 5 == 0 or epoch == 0:
             print(f"Stage 2 - Epoch {epoch+1}/{stage2_epochs}, Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
     
-    # Load best model from stage 2
+    # Save final model
+    final_model_path = save_model(
+        model, 
+        model_name=model_name,
+        dataset_name=dataset_name,
+        category=category,
+        version="final",
+        additional_info={
+            'train_loss': train_loss,
+            'val_loss': val_loss,
+            'stage': 'final',
+            'best': False
+        }
+    )
+    
+    # Calculate total training time
+    train_time = time.time() - start_time
+    print(f"Total training time: {train_time:.2f} seconds")
+    
+    # If we have a best model from stage 2, load it
     if best_model is not None:
         model.load_state_dict(best_model)
+        print(f"Loaded best model from Stage 2: {best_stage2_model_path}")
     
-    # Save model
-    torch.save(model.state_dict(), "results/models/improved_transformer_t2.pth")
-    print("Model trained and saved as improved_transformer_t2.pth")
+    # Plot training curve
+    plt.figure(figsize=(10, 6))
+    plt.plot(train_losses, label='Training Loss')
+    plt.plot(val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title(f'Improved Transformer Training - {dataset_name}')
+    if category is not None:
+        plt.title(f'Improved Transformer Training - {dataset_name} Category {category}')
+    plt.legend()
+    plt.grid(True)
+    
+    # Create plot filename
+    if category is not None:
+        plot_filename = f"results/plots/improved_transformer_{dataset_name.lower()}_cat{category}_loss.png"
+    else:
+        plot_filename = f"results/plots/improved_transformer_{dataset_name.lower()}_loss.png"
+    
+    plt.savefig(plot_filename)
+    plt.close()
     
     return model, train_losses, val_losses
 
@@ -1046,7 +1214,10 @@ def main():
             batch_size=32,
             lr=0.001,
             hidden_dim=hidden_dim,
-            validation_split=0.2
+            validation_split=0.2,
+            dataset_name="unknown",
+            category=None,
+            save_interval=10
         )
     
     # Calculate improved T² statistics

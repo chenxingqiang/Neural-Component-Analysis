@@ -285,7 +285,7 @@ def load_secom_data(data_dir='data/secom'):
         return None, None, None, None, None, None
 
 
-def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='results/models/secom_enhanced_transformer.pth'):
+def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='results/models/secom/enhanced_transformer/enhanced_transformer_SECOM_vbest.pth'):
     """
     Run enhanced transformer-based fault detection on SECOM data
     """
@@ -316,6 +316,9 @@ def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='resu
         dropout=0.2    # Increased dropout for high-dimensional data
     )
     
+    # Ensure model directory exists
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    
     # Try to load pretrained model, train new model if not found
     try:
         model.load_state_dict(torch.load(model_path, map_location=device))
@@ -329,11 +332,13 @@ def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='resu
             lr=0.001,
             hidden_dim=hidden_dim,
             validation_split=0.2,
-            model_filename=model_path
+            dataset_name="SECOM",  # Add dataset name for model saving
+            save_interval=10       # Save every 10 epochs
         )
         
         # Save model
         torch.save(model.state_dict(), model_path)
+        print(f"Enhanced model trained and saved to {model_path}")
         
         # Plot training curves
         plt.figure(figsize=(10, 6))
@@ -421,7 +426,7 @@ def run_enhanced_transformer_detection(X_train, X_test, happen, model_path='resu
     }
 
 
-def run_improved_transformer_detection(X_train, X_test, happen, model_path='results/models/secom_improved_transformer.pth'):
+def run_improved_transformer_detection(X_train, X_test, happen, model_path='results/models/secom/improved_transformer_t2/improved_transformer_t2_SECOM_vbest.pth'):
     """
     Run improved transformer-based fault detection (SPE only approach) on SECOM data
     """
@@ -450,6 +455,9 @@ def run_improved_transformer_detection(X_train, X_test, happen, model_path='resu
         dropout=0.2
     )
     
+    # Ensure model directory exists
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    
     # Try to load pretrained model, train new model if not found
     try:
         model.load_state_dict(torch.load(model_path, map_location=device))
@@ -462,11 +470,14 @@ def run_improved_transformer_detection(X_train, X_test, happen, model_path='resu
             batch_size=32,
             epochs=100,
             lr=0.001,
-            validation_split=0.1
+            validation_split=0.1,
+            dataset_name="SECOM",  # Add dataset name for model saving
+            save_interval=10       # Save every 10 epochs
         )
         
         # Save the model
         torch.save(model.state_dict(), model_path)
+        print(f"Improved model trained and saved to {model_path}")
     
     model.to(device)
     
@@ -858,8 +869,10 @@ def ultra_sensitive_ensemble_detector(X_train, X_test, happen, importance_result
             dropout=0.1  # Lower dropout for small feature sets
         )
         
-        # Use unique model filename for each ensemble member with dataset prefix
-        model_filename = f'results/models/secom_ensemble_model_{i+1}_features_{len(feature_set)}.pth'
+        # Use unique model name for each ensemble member
+        model_dir = f'results/models/secom/ensemble/member_{i+1}'
+        os.makedirs(model_dir, exist_ok=True)
+        model_path = f'{model_dir}/secom_ensemble_model_{i+1}_features_{len(feature_set)}.pth'
         
         # Train model with early stopping
         model, _, _ = train_enhanced_model(
@@ -869,8 +882,13 @@ def ultra_sensitive_ensemble_detector(X_train, X_test, happen, importance_result
             lr=0.001,
             hidden_dim=hidden_dim,
             validation_split=0.2,
-            model_filename=model_filename  # Pass the unique filename
+            dataset_name="SECOM",  # Use dataset_name instead of model_filename
+            save_interval=50       # Save less frequently for ensemble members
         )
+        
+        # Save the model
+        torch.save(model.state_dict(), model_path)
+        print(f"Saved ensemble model {i+1} to {model_path}")
         
         model.to(device)
         ensemble_models.append(model)
@@ -1844,6 +1862,16 @@ def main():
         print("Command: python process_secom_data.py")
         return
     
+    # Set model paths
+    model_paths = {
+        'enhanced': 'results/models/secom/enhanced_transformer/enhanced_transformer_SECOM_vbest.pth',
+        'improved': 'results/models/secom/improved_transformer_t2/improved_transformer_t2_SECOM_vbest.pth'
+    }
+    
+    # Ensure model directories exist
+    os.makedirs(os.path.dirname(model_paths['enhanced']), exist_ok=True)
+    os.makedirs(os.path.dirname(model_paths['improved']), exist_ok=True)
+    
     # Load processed SECOM data
     X_train, X_test, happen, y_test, normal_indices, fault_indices = load_secom_data()
     if X_train is None:
@@ -1851,11 +1879,11 @@ def main():
     
     # Run enhanced transformer-based fault detection
     print("\n========== Running Enhanced Transformer Detection ==========")
-    enhanced_results = run_enhanced_transformer_detection(X_train, X_test, happen)
+    enhanced_results = run_enhanced_transformer_detection(X_train, X_test, happen, model_path=model_paths['enhanced'])
     
     # Run improved transformer-based fault detection (SPE only)
     print("\n========== Running Improved Transformer Detection (SPE Only) ==========")
-    improved_results = run_improved_transformer_detection(X_train, X_test, happen)
+    improved_results = run_improved_transformer_detection(X_train, X_test, happen, model_path=model_paths['improved'])
     
     # Run combined fault detection with dynamic thresholds
     print("\n========== Running Combined Fault Detection with Dynamic Thresholds ==========")

@@ -5,6 +5,8 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 import time
+import os
+from src.utils.model_saver import save_model
 
 
 class PositionalEncoding(nn.Module):
@@ -187,7 +189,8 @@ def adaptive_control_limits(values, false_alarm_target=0.01, min_percentile=0.95
     return np.percentile(values, 100 * mid_percentile)
 
 
-def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_dim=None, validation_split=0.2, model_filename='results/models/enhanced_transformer_autoencoder.pth', dataset_prefix=None):
+def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_dim=None, validation_split=0.2, 
+                         dataset_name="unknown", category=None, save_interval=10):
     """
     Train enhanced transformer autoencoder
     
@@ -205,19 +208,13 @@ def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
         Hidden dimension size, if None will be determined automatically
     validation_split : float
         Fraction of data to use for validation
-    model_filename : str
-        Path to save model
-    dataset_prefix : str
-        Optional dataset prefix to add to the filename
+    dataset_name : str
+        Name of the dataset being used (e.g., 'TE', 'SECOM')
+    category : int or None
+        Fault category number (if applicable)
+    save_interval : int
+        Number of epochs between saving model checkpoints
     """
-    # If dataset prefix is provided, add it to the filename
-    if dataset_prefix:
-        # Extract just the filename without path
-        base_filename = os.path.basename(model_filename)
-        # Add dataset prefix to the filename
-        new_filename = f"results/models/{dataset_prefix}_{base_filename}"
-        model_filename = new_filename
-
     # 设置设备
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
@@ -260,6 +257,27 @@ def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
     
     start_time = time.time()
     
+    # Create directory for plots
+    os.makedirs("results/plots", exist_ok=True)
+    
+    # Define model name for saving
+    model_name = "enhanced_transformer"
+    
+    # Save initial model
+    best_model_path = save_model(
+        model, 
+        model_name=model_name,
+        dataset_name=dataset_name,
+        category=category,
+        version="initial",
+        additional_info={
+            'train_loss': 0.0,
+            'val_loss': 0.0,
+            'epoch': 0,
+            'best': False
+        }
+    )
+    
     # 训练循环
     for epoch in range(epochs):
         # 训练阶段
@@ -301,18 +319,64 @@ def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
         # 更新学习率调度器
         scheduler.step(val_loss)
         
+        # Save model at specified intervals
+        if (epoch + 1) % save_interval == 0:
+            save_model(
+                model, 
+                model_name=model_name,
+                dataset_name=dataset_name,
+                category=category,
+                version=f"epoch{epoch+1}",
+                additional_info={
+                    'train_loss': train_loss,
+                    'val_loss': val_loss,
+                    'epoch': epoch + 1,
+                    'best': False
+                }
+            )
+        
         # 保存最佳模型
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), model_filename)
+            best_model_path = save_model(
+                model, 
+                model_name=model_name,
+                dataset_name=dataset_name,
+                category=category,
+                version="best",
+                additional_info={
+                    'train_loss': train_loss,
+                    'val_loss': val_loss,
+                    'epoch': epoch + 1,
+                    'best': True
+                }
+            )
         
         # 每10个epoch打印一次进度
         if (epoch + 1) % 10 == 0:
             print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
     
+    # Save final model
+    final_model_path = save_model(
+        model, 
+        model_name=model_name,
+        dataset_name=dataset_name,
+        category=category,
+        version="final",
+        additional_info={
+            'train_loss': train_loss,
+            'val_loss': val_loss,
+            'epoch': epochs,
+            'best': False,
+            'total_epochs': epochs
+        }
+    )
+    
     # 计算训练时间
     train_time = time.time() - start_time
     print(f"训练完成，耗时：{train_time:.2f}秒，最佳验证损失：{best_val_loss:.6f}")
+    print(f"最佳模型保存在：{best_model_path}")
+    print(f"最终模型保存在：{final_model_path}")
     
     # 绘制损失曲线
     plt.figure(figsize=(10, 6))
@@ -320,17 +384,27 @@ def train_enhanced_model(X_train, epochs=100, batch_size=32, lr=0.001, hidden_di
     plt.plot(val_losses, label='Validation Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss (MSE)')
-    plt.title('Enhanced Transformer Autoencoder Training Process')
+    plt.title(f'Enhanced Transformer Autoencoder Training - {dataset_name}')
+    if category is not None:
+        plt.title(f'Enhanced Transformer Autoencoder Training - {dataset_name} Category {category}')
     plt.legend()
     plt.grid(True)
-    plt.savefig("results/plots/enhanced_transformer_loss.png")
+    
+    # Create plot filename
+    if category is not None:
+        plot_filename = f"results/plots/enhanced_transformer_{dataset_name.lower()}_cat{category}_loss.png"
+    else:
+        plot_filename = f"results/plots/enhanced_transformer_{dataset_name.lower()}_loss.png"
+    
+    plt.savefig(plot_filename)
     plt.close()
     
     # 加载最佳模型
     try:
-        model.load_state_dict(torch.load(model_filename))
+        model.load_state_dict(torch.load(best_model_path)['model_state_dict'])
+        print(f"加载最佳模型：{best_model_path}")
     except Exception as e:
-        print(f"警告：无法加载保存的模型 {model_filename}，可能尺寸不匹配: {e}")
+        print(f"警告：无法加载保存的模型 {best_model_path}，可能尺寸不匹配: {e}")
         print("继续使用当前模型参数")
     
     return model, train_losses, val_losses
@@ -351,7 +425,8 @@ if __name__ == "__main__":
         batch_size=32,
         lr=0.001,
         hidden_dim=27,
-        validation_split=0.2
+        validation_split=0.2,
+        dataset_name="TE"
     )
     
     print("模型训练和保存完成，可以用于故障检测。") 

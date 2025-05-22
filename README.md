@@ -1,14 +1,15 @@
 # Neural Component Analysis
 
-Implementation of industrial process fault detection methods based on neural networks and Transformers. This project implements various autoencoder-based fault detection algorithms, especially anomaly detection for semiconductor manufacturing processes (SECOM dataset).
+Implementation of industrial process fault detection methods based on neural networks and Transformers. This project implements various autoencoder-based fault detection algorithms, especially anomaly detection for semiconductor manufacturing processes (SECOM dataset) and Tennessee Eastman (TE) process.
 
 ## Project Features
 
 - Implementation of multiple Transformer-based autoencoder models
 - Optimized algorithms for T² and SPE (Q) statistics
 - Comparative experiments of various fault detection methods
-- SECOM and TE dataset support
+- SECOM and TE dataset support with category-based loading
 - Complete result management and visualization
+- Automatic model saving and organization by dataset and model type
 
 ## Model Architecture
 
@@ -27,8 +28,12 @@ Detailed model architecture description is available in [docs/algo_intro.md](doc
 neural-component-analysis/
 ├── data/                        # Dataset directory
 │   ├── secom/                   # SECOM dataset
+│   │   ├── train/               # Training data
+│   │   └── test/                # Test data
 │   ├── secom_original_data/     # Original SECOM data
 │   └── TE/                      # Tennessee Eastman dataset
+│       ├── train/               # Training data
+│       └── test/                # Test data with categories 0-21
 ├── src/                         # Source code directory
 │   ├── models/                  # Model implementations
 │   │   ├── enhanced_transformer_autoencoder.py    # Enhanced Transformer autoencoder
@@ -39,7 +44,9 @@ neural-component-analysis/
 │   │   ├── fault_detector_factory.py             # Detector factory method
 │   │   └── spe_fault_detector.py                 # SPE fault detector
 │   └── utils/                   # Utility functions
-│       └── process_secom_data.py                 # SECOM data preprocessing
+│       ├── process_secom_data.py                 # SECOM data preprocessing
+│       ├── te_data_loader.py                     # TE data loading utilities
+│       └── model_saver.py                        # Model saving/loading utilities
 ├── scripts/                     # Script directory
 │   ├── compare_t2_spe.py                         # T² and SPE comparison script
 │   ├── run_secom_fault_detection.py              # SECOM fault detection example
@@ -49,18 +56,18 @@ neural-component-analysis/
 │   └── integration_example.py                    # Integration example
 ├── results/                     # Results output directory
 │   ├── models/                  # Trained model files
+│   │   ├── secom/               # SECOM dataset models
+│   │   │   ├── enhanced_transformer/             # Enhanced Transformer models
+│   │   │   └── improved_transformer_t2/          # Improved Transformer models
+│   │   ├── te/                  # TE dataset models
+│   │   │   ├── enhanced_transformer/             # Enhanced Transformer models
+│   │   │   └── improved_transformer_t2/          # Improved Transformer models
+│   │   └── unknown/             # Other models
 │   ├── plots/                   # Generated charts
 │   └── logs/                    # Log files
 ├── docs/                        # Documentation directory
-│   ├── README.md                # Documentation home
-│   ├── algo_intro.md            # Algorithm introduction
-│   ├── balance-twostage.md      # Balanced two-stage detection method
-│   ├── README_COMPARISON.md     # Method comparison description
-│   └── README_SECOM.md          # SECOM dataset description
-├── tests/                       # Test directory
 ├── LICENSE                      # MIT license
 ├── README.md                    # This document
-├── setup.py                     # Installation configuration
 └── requirements.txt             # Project dependencies
 ```
 
@@ -72,11 +79,13 @@ neural-component-analysis/
   - Uses multi-layer encoder-decoder to improve reconstruction accuracy
   - Feature representation optimized for SPE
   - Implements adaptive control limits
+  - Automatic model saving during training
 
 - **improved_transformer_t2.py** - Improved T² specialized Transformer autoencoder
   - Uses bottleneck structure to extract key features
   - Two-stage training process (reconstruction priority, then T² optimization)
   - Implements nonlinear amplification fault score calculation
+  - Automatic model saving during training
 
 - **transformer_enhanced_two_stage.py** - Two-stage Transformer detector
   - Combines preliminary detection and Transformer optimization
@@ -92,6 +101,13 @@ neural-component-analysis/
 ### Utility Module (src/utils/)
 
 - **process_secom_data.py** - SECOM data preprocessing tool
+- **te_data_loader.py** - Tennessee Eastman data loading utilities
+  - Supports loading specific fault categories
+  - Provides category-by-category analysis
+- **model_saver.py** - Model saving and loading utilities
+  - Organized directory structure by dataset and model type
+  - Versioning support for models
+  - Metadata storage with models
 
 ### Script Module (scripts/)
 
@@ -99,6 +115,8 @@ neural-component-analysis/
 - **compare_t2_spe.py** - T² and SPE performance comparison script
 - **secom_comparison_detection.py** - Comparison of methods on SECOM dataset
 - **te_comparison_detection.py** - Comparison of methods on TE dataset
+  - Support for analyzing specific fault categories
+  - Comprehensive performance metrics by category
 
 ## Datasets
 
@@ -106,6 +124,8 @@ The project supports two main datasets:
 
 1. **SECOM** - Semiconductor manufacturing process dataset (located in `data/secom/` and `data/secom_original_data/`)
 2. **TE** - Tennessee Eastman chemical process dataset (located in `data/TE/`)
+   - 22 different fault categories (0-21, where 0 is normal operation)
+   - Organized testing by category for detailed analysis
 
 ## Installation
 
@@ -132,7 +152,7 @@ python scripts/run_secom_fault_detection.py
 ```
 
 All results will be saved in the `results/` directory:
-- Model files will be saved in `results/models/`
+- Model files will be saved in `results/models/secom/[model_type]/`
 - Charts will be saved in `results/plots/`
 - Log files will be saved in `results/logs/`
 
@@ -142,10 +162,17 @@ All results will be saved in the `results/` directory:
 python scripts/secom_comparison_detection.py
 ```
 
-### 3. T² and SPE performance comparison:
+### 3. Tennessee Eastman fault detection with specific categories:
 
 ```bash
-python scripts/compare_t2_spe.py
+# Analyze a specific fault category (e.g., category 1)
+python scripts/te_comparison_detection.py --categories 1
+
+# Analyze multiple specific categories
+python scripts/te_comparison_detection.py --categories 1 2 3
+
+# Analyze all available categories
+python scripts/te_comparison_detection.py
 ```
 
 ### 4. Using as a library
@@ -153,11 +180,12 @@ python scripts/compare_t2_spe.py
 ```python
 from src.models import EnhancedTransformerAutoencoder
 from src.detectors import create_fault_detector
-from src.utils import load_secom_data, preprocess_secom_data
+from src.utils import load_secom_data, process_secom_data
+from src.utils import load_te_data_category, load_te_data_all
 
-# Load and preprocess data
+# Load and preprocess SECOM data
 X_train, X_test, y_test = load_secom_data()
-X_train_processed, X_test_processed = preprocess_secom_data(X_train, X_test)
+X_train_processed, X_test_processed = process_secom_data(X_train, X_test)
 
 # Create detector
 detector = create_fault_detector('enhanced_transformer')
@@ -166,7 +194,13 @@ detector = create_fault_detector('enhanced_transformer')
 detector.fit(X_train_processed)
 
 # Perform fault detection
-results = detector.detect(X_test_processed)
+secom_results = detector.detect(X_test_processed)
+
+# Load specific TE fault category (e.g., category 1)
+X_train_te, X_test_te, test_labels_te, happen_te = load_te_data_category(category=1)
+
+# Perform fault detection on TE data
+te_results = detector.detect(X_test_te)
 ```
 
 ## Key Performance Metrics
@@ -185,7 +219,17 @@ On the SECOM dataset:
    - Combined metrics: False alarm rate 3.5%, Miss rate 1.1%, AUC 0.98
    - Detection delay: Average 2.3 samples
 
-For more detailed results, see the image files in the `results/plots/` directory.
+On the TE dataset (average across categories):
+
+1. **Enhanced Transformer Autoencoder**
+   - T² metrics: False alarm rate 3.12%, Miss rate 96.18%, AUC 0.68
+   - SPE metrics: False alarm rate 8.12%, Miss rate 0.29%, AUC 0.97
+
+2. **Improved T² Transformer Autoencoder**
+   - Combined metrics: False alarm rate 0.00%, Miss rate 0.00%, AUC 0.99
+   - Detection delay: Immediate detection (0 samples)
+
+For more detailed results by category, see the results in the `results/plots/` directory.
 
 ## Visualization Guide
 
@@ -198,21 +242,20 @@ This section explains the plots generated by the various fault detection methods
    - **Generated by**: `scripts/transformer_comparison_detection.py`
    - **Results**: Shows T² and SPE statistics for normal and fault samples, highlighting the superior detection capability of transformer models with lower false alarm rates
 
-2. **te_comparison_fault_detection.png**
+2. **te_category1_comparison_fault_detection.png**
    - **Description**: Comparison of different methods on Tennessee Eastman (TE) dataset
    - **Generated by**: `scripts/te_comparison_detection.py`
    - **Results**: Visualizes how PCA, Enhanced Transformer, and Improved Transformer models perform in detecting faults in the TE process
-   - **URL**: [View image](https://raw.githubusercontent.com/chenxingqiang/Neural-Component-Analysis/main/results/plots/te_comparison_fault_detection.png)
 
-3. **secom_comparison_fault_detection.png**
+3. **secom_comparison_detection.png**
    - **Description**: Side-by-side comparison of detection methods on SECOM data
    - **Generated by**: `scripts/secom_comparison_detection.py`
    - **Results**: Shows T² and SPE statistics of different methods with thresholds and actual fault occurrence timing
 
-4. **comparison_fault_detection.png**
-   - **Description**: Comprehensive comparison of all implemented fault detection methods
+4. **comparison_fault_detection_preview.png**
+   - **Description**: Preview of fault detection comparison
    - **Generated by**: Comparison scripts with combined methods
-   - **Results**: Allows direct visual comparison of method sensitivity and accuracy across multiple metrics
+   - **Results**: Simplified visualization for quick method comparison
 
 5. **t2_spe_comparison.png**
    - **Description**: Direct comparison between T² and SPE statistics
@@ -258,10 +301,10 @@ This section explains the plots generated by the various fault detection methods
     - **Generated by**: Two-stage detector evaluation
     - **Results**: Shows first-stage alerts and second-stage confirmations, demonstrating reduced false alarms
 
-13. **transformer_enhanced_two_stage.png**
-    - **Description**: Transformer-enhanced two-stage detector visualization
-    - **Generated by**: Two-stage detector with Transformer
-    - **Results**: Displays how Transformer refinement improves detection accuracy
+13. **secom_comparison_detection.png**
+    - **Description**: Detection performance comparison on SECOM
+    - **Generated by**: Comparison detector
+    - **Results**: Visualizes detection accuracy across different methods
 
 14. **secom_extreme_anomaly_detector.png**
     - **Description**: Extreme anomaly detector performance
@@ -322,16 +365,6 @@ This section explains the plots generated by the various fault detection methods
     - **Generated by**: PCA evaluation
     - **Results**: Shows standard PCA-based detection for baseline comparison
 
-25. **secom_comparison_detection.png**
-    - **Description**: Detection performance comparison on SECOM
-    - **Generated by**: Comparison detector
-    - **Results**: Visualizes detection accuracy across different methods
-
-26. **comparison_fault_detection_preview.png**
-    - **Description**: Preview of fault detection comparison
-    - **Generated by**: Preview generation
-    - **Results**: Simplified visualization for quick method comparison
-
 ## Documentation
 
 - [Algorithm Details](docs/algo_intro.md) - About Transformer model architecture and principles
@@ -339,17 +372,36 @@ This section explains the plots generated by the various fault detection methods
 - [Method Comparison](docs/README_COMPARISON.md) - Comparison of different fault detection methods
 - [SECOM Dataset](docs/README_SECOM.md) - SECOM dataset description
 
+## New Features
+
+Recent updates to the project include:
+
+1. **Improved TE Dataset Support**
+   - Added functions to load TE data by specific category
+   - Implemented comprehensive analysis of all 22 fault categories
+   - Enhanced visualization of category-specific results
+
+2. **Enhanced Model Management**
+   - Automatic model saving during training at configurable intervals
+   - Structured directory organization for models by dataset and model type
+   - Model versioning and metadata storage
+
+3. **Optimized SECOM Analysis**
+   - Specialized fault detection approaches for SECOM data
+   - Feature importance analysis for identifying critical process variables
+   - Balanced detector designs with industry-friendly false alarm rates
+
 ## Citation
 
 If you use this code in your research, please cite:
 
 ```
 @misc{Neural-Component-Analysis,
-  author = {Author},
+  author = {Chen Xingqiang},
   title = {Neural-Component-Analysis},
   year = {2023},
   publisher = {GitHub},
-  url = {https://github.com/username/Neural-Component-Analysis}
+  url = {https://github.com/chenxingqiang/Neural-Component-Analysis}
 }
 ```
 

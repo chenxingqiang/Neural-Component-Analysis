@@ -473,9 +473,13 @@ def main(skip_improved_transformer=False, include_transformer=False, skip_pca=Fa
     # Set default model paths if not provided
     if model_paths is None:
         model_paths = {
-            'enhanced': 'results/models/secom_enhanced_transformer.pth',
-            'improved': 'results/models/secom_improved_transformer.pth'
+            'enhanced': 'results/models/secom/enhanced_transformer/enhanced_transformer_SECOM_vbest.pth',
+            'improved': 'results/models/secom/improved_transformer_t2/improved_transformer_t2_SECOM_vbest.pth'
         }
+
+    # Ensure model directories exist
+    os.makedirs(os.path.dirname(model_paths['enhanced']), exist_ok=True)
+    os.makedirs(os.path.dirname(model_paths['improved']), exist_ok=True)
 
     print("=" * 60)
     print("SECOM Fault Detection Methods Comparison")

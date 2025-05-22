@@ -7,6 +7,7 @@ from scipy import stats
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import time
+import argparse
 from src.models.enhanced_transformer_autoencoder import (
     EnhancedTransformerAutoencoder, 
     calculate_weighted_spe,
@@ -25,6 +26,11 @@ from src.models.improved_transformer_t2 import (
     calculate_spe as calculate_improved_spe,
     calculate_control_limit,
     calculate_detection_metrics
+)
+from src.utils.te_data_loader import (
+    load_te_data_category,
+    get_available_categories,
+    load_te_data_all
 )
 
 
@@ -149,9 +155,12 @@ def print_comparison_table(pca_false_rates, pca_miss_rates,
                            enhanced_transformer_false_rates, enhanced_transformer_miss_rates,
                            improved_transformer_false_rates, improved_transformer_miss_rates,
                            pca_detection_times, enhanced_transformer_detection_times,
-                           improved_transformer_detection_times):
+                           improved_transformer_detection_times,
+                           category=None):
     """Print comparison table for the different methods"""
+    category_str = f" (Category {category})" if category is not None else ""
     print("\n" + "="*90)
+    print(f"COMPARISON TABLE{category_str}")
     print("{:<20} | {:<12} {:<12} | {:<12} {:<12}".format(
         "Method", "T² False(%)", "SPE False(%)", "T² Miss(%)", "SPE Miss(%)"))
     print("-"*90)
@@ -204,28 +213,37 @@ def print_comparison_table(pca_false_rates, pca_miss_rates,
     print("="*90)
 
 
-def main(skip_improved_transformer=False, model_paths=None):
+def process_category(category, skip_improved_transformer=False, model_paths=None):
     """
-    Main function to run the comparison between PCA and transformer-based fault detection methods
+    Process a single TE fault category
     
     Parameters:
     -----------
+    category : int
+        Fault category to process
     skip_improved_transformer : bool
-        If True, skip the improved transformer model (faster execution)
+        If True, skip the improved transformer model
     model_paths : dict
-        Dictionary containing paths for model files, with keys 'enhanced' and 'improved'
+        Dictionary containing paths for model files
+    
+    Returns:
+    --------
+    results : dict
+        Dictionary containing comparison results for the category
     """
-    start_time = time.time()
+    print(f"\n{'='*50}")
+    print(f"Processing TE fault category {category}")
+    print(f"{'='*50}")
     
     # Set default model paths if not provided
     if model_paths is None:
         model_paths = {
-            'enhanced': 'results/models/te_enhanced_transformer_autoencoder.pth',
-            'improved': 'results/models/te_improved_transformer_t2.pth'
+            'enhanced': f'results/models/te/enhanced_transformer/enhanced_transformer_TE_cat{category}_vbest.pth',
+            'improved': f'results/models/te/improved_transformer_t2/improved_transformer_t2_TE_cat{category}_vstage2_best.pth'
         }
     
-    # Load data
-    X_train, X_test, happen = load_data(is_mock=True)  # Use mock data for demonstration
+    # Load data for this category
+    X_train, X_test, test_labels, happen = load_te_data_category(category)
     print(f"Data loaded. Training shape: {X_train.shape}, Testing shape: {X_test.shape}")
     
     # Set up PCA model
@@ -274,10 +292,17 @@ def main(skip_improved_transformer=False, model_paths=None):
     # Get enhanced model path
     enhanced_model_path = model_paths['enhanced']
     
+    # Create directory if it doesn't exist
+    os.makedirs(os.path.dirname(enhanced_model_path), exist_ok=True)
+    
     # Try to load pre-trained model or train a new one
     try:
         # Try to load with provided path
-        enhanced_model.load_state_dict(torch.load(enhanced_model_path, map_location=device))
+        model_data = torch.load(enhanced_model_path, map_location=device)
+        if isinstance(model_data, dict) and 'model_state_dict' in model_data:
+            enhanced_model.load_state_dict(model_data['model_state_dict'])
+        else:
+            enhanced_model.load_state_dict(model_data)
         print(f"Loaded pre-trained enhanced transformer model from {enhanced_model_path}")
     except:
         print(f"Pre-trained enhanced model not found at {enhanced_model_path}. Training a new model...")
@@ -287,7 +312,10 @@ def main(skip_improved_transformer=False, model_paths=None):
             batch_size=32,
             lr=0.001,
             hidden_dim=hidden_dim,
-            validation_split=0.2
+            validation_split=0.2,
+            dataset_name="TE",
+            category=category,
+            save_interval=10
         )
         
         torch.save(enhanced_model.state_dict(), enhanced_model_path)
@@ -316,9 +344,16 @@ def main(skip_improved_transformer=False, model_paths=None):
         # Get improved model path
         improved_model_path = model_paths['improved']
         
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(improved_model_path), exist_ok=True)
+        
         # Try to load pre-trained model or train a new one
         try:
-            improved_model.load_state_dict(torch.load(improved_model_path, map_location=device))
+            model_data = torch.load(improved_model_path, map_location=device)
+            if isinstance(model_data, dict) and 'model_state_dict' in model_data:
+                improved_model.load_state_dict(model_data['model_state_dict'])
+            else:
+                improved_model.load_state_dict(model_data)
             print(f"Loaded pre-trained improved transformer model from {improved_model_path}")
         except Exception as e:
             print(f"Pre-trained improved model not found at {improved_model_path} or incompatible: {str(e)}")
@@ -329,7 +364,10 @@ def main(skip_improved_transformer=False, model_paths=None):
                 batch_size=32,
                 lr=0.001,
                 hidden_dim=improved_hidden_dim,
-                validation_split=0.2
+                validation_split=0.2,
+                dataset_name="TE",
+                category=category,
+                save_interval=10
             )
             
             torch.save(improved_model.state_dict(), improved_model_path)
@@ -354,11 +392,13 @@ def main(skip_improved_transformer=False, model_paths=None):
         print("\nT² Statistics Analysis:")
         print(f"Training T² - Min: {np.min(t2_train_improved):.2f}, Max: {np.max(t2_train_improved):.2f}, Mean: {np.mean(t2_train_improved):.2f}, Median: {np.median(t2_train_improved):.2f}")
         print(f"Test T² (Normal) - Min: {np.min(t2_test_improved[:happen]):.2f}, Max: {np.max(t2_test_improved[:happen]):.2f}, Mean: {np.mean(t2_test_improved[:happen]):.2f}, Median: {np.median(t2_test_improved[:happen]):.2f}")
-        print(f"Test T² (Fault) - Min: {np.min(t2_test_improved[happen:]):.2f}, Max: {np.max(t2_test_improved[happen:]):.2f}, Mean: {np.mean(t2_test_improved[happen:]):.2f}, Median: {np.median(t2_test_improved[happen:]):.2f}")
+        if category > 0:  # Only show fault statistics for actual fault categories
+            print(f"Test T² (Fault) - Min: {np.min(t2_test_improved[happen:]):.2f}, Max: {np.max(t2_test_improved[happen:]):.2f}, Mean: {np.mean(t2_test_improved[happen:]):.2f}, Median: {np.median(t2_test_improved[happen:]):.2f}")
         print(f"SPE Statistics Analysis:")
         print(f"Training SPE - Min: {np.min(spe_train_improved):.2f}, Max: {np.max(spe_train_improved):.2f}, Mean: {np.mean(spe_train_improved):.2f}, Median: {np.median(spe_train_improved):.2f}")
         print(f"Test SPE (Normal) - Min: {np.min(spe_test_improved[:happen]):.2f}, Max: {np.max(spe_test_improved[:happen]):.2f}, Mean: {np.mean(spe_test_improved[:happen]):.2f}, Median: {np.median(spe_test_improved[:happen]):.2f}")
-        print(f"Test SPE (Fault) - Min: {np.min(spe_test_improved[happen:]):.2f}, Max: {np.max(spe_test_improved[happen:]):.2f}, Mean: {np.mean(spe_test_improved[happen:]):.2f}, Median: {np.median(spe_test_improved[happen:]):.2f}")
+        if category > 0:  # Only show fault statistics for actual fault categories
+            print(f"Test SPE (Fault) - Min: {np.min(spe_test_improved[happen:]):.2f}, Max: {np.max(spe_test_improved[happen:]):.2f}, Mean: {np.mean(spe_test_improved[happen:]):.2f}, Median: {np.median(spe_test_improved[happen:]):.2f}")
         
         # Fix: Invert the T² metric for Improved Transformer since lower values indicate faults
         print("\nInverting T² metric for Improved Transformer...")
@@ -373,24 +413,26 @@ def main(skip_improved_transformer=False, model_paths=None):
         t2_train_improved = t2_train_improved_inverted
         t2_test_improved = t2_test_improved_inverted
         
-        # Add adjustment factor based on SPE values to make T² more sensitive to faults
-        # Calculate correlation between SPE and faults to estimate a good weight factor
-        spe_normal_mean = np.mean(spe_test_improved[:happen])
-        spe_fault_mean = np.mean(spe_test_improved[happen:])
-        spe_diff_ratio = max(1.0, spe_fault_mean / spe_normal_mean)
-        print(f"SPE fault vs normal ratio: {spe_diff_ratio:.2f}")
-        
-        # Use SPE values to enhance T² sensitivity to faults
-        weight = 0.5  # Adjust this parameter to balance contribution
-        for i in range(happen, len(t2_test_improved)):
-            spe_ratio = spe_test_improved[i] / spe_normal_mean
-            t2_test_improved[i] += weight * normalized_t2_scale * (spe_ratio / spe_diff_ratio)
+        if category > 0:  # Only apply enhancement for actual fault categories
+            # Add adjustment factor based on SPE values to make T² more sensitive to faults
+            # Calculate correlation between SPE and faults to estimate a good weight factor
+            spe_normal_mean = np.mean(spe_test_improved[:happen])
+            spe_fault_mean = np.mean(spe_test_improved[happen:])
+            spe_diff_ratio = max(1.0, spe_fault_mean / spe_normal_mean)
+            print(f"SPE fault vs normal ratio: {spe_diff_ratio:.2f}")
+            
+            # Use SPE values to enhance T² sensitivity to faults
+            weight = 0.5  # Adjust this parameter to balance contribution
+            for i in range(happen, len(t2_test_improved)):
+                spe_ratio = spe_test_improved[i] / spe_normal_mean
+                t2_test_improved[i] += weight * normalized_t2_scale * (spe_ratio / spe_diff_ratio)
         
         # Recalculate statistics after inversion and enhancement
         print("\nEnhanced T² Statistics Analysis:")
         print(f"Training T² - Min: {np.min(t2_train_improved):.2f}, Max: {np.max(t2_train_improved):.2f}, Mean: {np.mean(t2_train_improved):.2f}, Median: {np.median(t2_train_improved):.2f}")
         print(f"Test T² (Normal) - Min: {np.min(t2_test_improved[:happen]):.2f}, Max: {np.max(t2_test_improved[:happen]):.2f}, Mean: {np.mean(t2_test_improved[:happen]):.2f}, Median: {np.median(t2_test_improved[:happen]):.2f}")
-        print(f"Test T² (Fault) - Min: {np.min(t2_test_improved[happen:]):.2f}, Max: {np.max(t2_test_improved[happen:]):.2f}, Mean: {np.mean(t2_test_improved[happen:]):.2f}, Median: {np.median(t2_test_improved[happen:]):.2f}")
+        if category > 0:  # Only show fault statistics for actual fault categories
+            print(f"Test T² (Fault) - Min: {np.min(t2_test_improved[happen:]):.2f}, Max: {np.max(t2_test_improved[happen:]):.2f}, Mean: {np.mean(t2_test_improved[happen:]):.2f}, Median: {np.median(t2_test_improved[happen:]):.2f}")
         
         # Calculate separate control limits for T² and SPE
         t2_limit_improved = np.percentile(t2_train_improved, 99)  # Use simple percentile method for T² after inversion
@@ -445,80 +487,119 @@ def main(skip_improved_transformer=False, model_paths=None):
         enhanced_false_rates, enhanced_miss_rates,
         improved_false_rates, improved_miss_rates,
         pca_detection_times, enhanced_detection_times,
-        improved_detection_times
+        improved_detection_times,
+        category
     )
     
-    # Plot comparison
+    # Create comparison plot
+    # Use category number in title
     plot_comparison(
         t2_test_pca, spe_test_pca, 
-        t2_test_enhanced, spe_test_enhanced,
+        t2_test_enhanced, spe_test_enhanced, 
         t2_test_improved, spe_test_improved,
         t2_limit_pca, spe_limit_pca, 
         t2_limit_enhanced, spe_limit_enhanced,
-        t2_limit_improved, spe_limit_improved,
-        happen,
-        title_prefix="TE"
+        t2_limit_improved, spe_limit_improved, 
+        happen, title_prefix=f"TE_Category{category}"
     )
     
-    runtime = time.time() - start_time
-    print(f"Total Runtime: {runtime:.2f} seconds")
-    
-    # Prepare the result dictionary
-    result = {
-        'pca_model': pca_model,
-        'enhanced_transformer_model': enhanced_model,
-        'pca_metrics': {
-            't2_train': t2_train_pca,
-            'spe_train': spe_train_pca,
-            't2_test': t2_test_pca,
-            'spe_test': spe_test_pca,
-            't2_limit': t2_limit_pca,
-            'spe_limit': spe_limit_pca,
+    # Return results for this category
+    return {
+        'category': category,
+        'pca': {
             'false_rates': pca_false_rates,
             'miss_rates': pca_miss_rates,
             'detection_times': pca_detection_times
         },
-        'enhanced_transformer_metrics': {
-            't2_train': t2_train_enhanced,
-            'spe_train': spe_train_enhanced,
-            't2_test': t2_test_enhanced,
-            'spe_test': spe_test_enhanced,
-            't2_limit': t2_limit_enhanced,
-            'spe_limit': spe_limit_enhanced,
+        'enhanced': {
             'false_rates': enhanced_false_rates,
             'miss_rates': enhanced_miss_rates,
-            'detection_times': enhanced_detection_times,
-            'importance_weights': importance_weights.cpu().numpy() if hasattr(importance_weights, 'cpu') else importance_weights
+            'detection_times': enhanced_detection_times
         },
-        'improved_transformer_metrics': {
-            't2_train': t2_train_improved,
-            'spe_train': spe_train_improved,
-            't2_test': t2_test_improved,
-            'spe_test': spe_test_improved,
-            't2_limit': t2_limit_improved,
-            'spe_limit': spe_limit_improved,
+        'improved': {
             'false_rates': improved_false_rates,
             'miss_rates': improved_miss_rates,
             'detection_times': improved_detection_times
-        },
-        'runtime': runtime
+        }
     }
+
+
+def main(skip_improved_transformer=False, categories=None):
+    """
+    Main function to run the comparison between PCA and transformer-based fault detection methods
     
-    # Add improved transformer model only if it was actually used
-    if not skip_improved_transformer:
-        result['improved_transformer_model'] = improved_model
+    Parameters:
+    -----------
+    skip_improved_transformer : bool
+        If True, skip the improved transformer model (faster execution)
+    categories : list
+        List of fault categories to process, if None, process all available categories
+    """
+    start_time = time.time()
     
-    return result
+    # Ensure results directories exist
+    os.makedirs("results/models", exist_ok=True)
+    os.makedirs("results/plots", exist_ok=True)
+    
+    # Get available categories if none specified
+    if categories is None:
+        categories = get_available_categories()
+        print(f"Found {len(categories)} categories: {categories}")
+    
+    # Process each category
+    all_results = {}
+    for category in categories:
+        try:
+            category_results = process_category(
+                category,
+                skip_improved_transformer=skip_improved_transformer,
+                model_paths={
+                    'enhanced': f'results/models/te/enhanced_transformer/enhanced_transformer_TE_cat{category}_vbest.pth',
+                    'improved': f'results/models/te/improved_transformer_t2/improved_transformer_t2_TE_cat{category}_vstage2_best.pth'
+                }
+            )
+            all_results[category] = category_results
+        except Exception as e:
+            print(f"Error processing category {category}: {e}")
+    
+    # Print summary of all categories
+    print("\n\n" + "="*100)
+    print("SUMMARY OF ALL FAULT CATEGORIES")
+    print("="*100)
+    
+    print("{:<10} | {:<20} | {:<20} | {:<20}".format(
+        "Category", "PCA Miss Rate (T²/SPE)", "Enhanced Miss (T²/SPE)", "Improved Miss (T²/SPE)"))
+    print("-"*100)
+    
+    # Helper function to convert numpy values to scalar floats
+    def to_scalar(value):
+        # Convert numpy array to scalar if needed
+        if isinstance(value, np.ndarray) and value.size == 1:
+            return float(value.item())
+        elif hasattr(value, 'item'):
+            return float(value.item())
+        return float(value)
+    
+    for category, results in sorted(all_results.items()):
+        pca_miss_t2 = to_scalar(results['pca']['miss_rates'][0])
+        pca_miss_spe = to_scalar(results['pca']['miss_rates'][1])
+        enhanced_miss_t2 = to_scalar(results['enhanced']['miss_rates'][0])
+        enhanced_miss_spe = to_scalar(results['enhanced']['miss_rates'][1])
+        improved_miss_t2 = to_scalar(results['improved']['miss_rates'][0])
+        improved_miss_spe = to_scalar(results['improved']['miss_rates'][1])
+        
+        print("{:<10} | {:<8.2f} / {:<8.2f} | {:<8.2f} / {:<8.2f} | {:<8.2f} / {:<8.2f}".format(
+            category, pca_miss_t2, pca_miss_spe, enhanced_miss_t2, enhanced_miss_spe, improved_miss_t2, improved_miss_spe))
+    
+    print("="*100)
+    end_time = time.time()
+    print(f"Total execution time: {end_time - start_time:.2f} seconds")
 
 
 if __name__ == "__main__":
-    import argparse
-    
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Run TE fault detection methods comparison')
-    parser.add_argument('--skip_improved_transformer', action='store_true', 
-                        help='Skip Improved Transformer model (faster)')
-    
+    parser = argparse.ArgumentParser(description="Run TE dataset fault detection comparison")
+    parser.add_argument("--skip-improved", action="store_true", help="Skip improved transformer model")
+    parser.add_argument("--categories", type=int, nargs="+", help="Specific fault categories to process")
     args = parser.parse_args()
     
-    main(skip_improved_transformer=args.skip_improved_transformer)
+    main(skip_improved_transformer=args.skip_improved, categories=args.categories)
