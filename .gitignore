@@ -88,7 +88,7 @@ Icon
 model_weights/
 
 # Matplotlib
-*.png
+
 !comparison_fault_detection.png
 !comparison_fault_detection_preview.png
 !fault_contribution_plot.png
